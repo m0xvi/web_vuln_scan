@@ -1,0 +1,122 @@
+import telebot
+import multiprocessing
+import asyncio
+import logging
+import time
+from scraper import spider
+from sql import analyze_vulnerabilities, load_scraped_data
+from requests.exceptions import ConnectionError
+from tenacity import retry, stop_after_attempt, wait_fixed
+
+# Укажите токен вашего бота
+TOKEN = '6979756435:AAG1dpmdnqwkBs6yXb1DJ9jpWhsCc8a16t0'
+bot = telebot.TeleBot(TOKEN)
+
+# Настройка логирования
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+def run_async_in_process(queue, url, chat_id):
+    try:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        results = loop.run_until_complete(spider_and_analyze(url, chat_id))
+        queue.put(results)
+    except Exception as e:
+        logger.error(f"Error in run_async_in_process: {e}")
+        queue.put({'error': str(e)})
+
+async def spider_and_analyze(url, chat_id):
+    try:
+        send_message_with_retry(chat_id, "Сканирование началось, пожалуйста, подождите...")
+
+        logger.info(f"Starting spider for URL: {url}")
+        await spider(url)  # Запуск скрапера
+        logger.info(f"Spider finished for URL: {url}")
+
+        send_message_with_retry(chat_id, "Сканирование завершено, анализ данных...")
+
+        scraped_data = load_scraped_data('scraped_data.json')  # Загрузка данных скрапера
+        logger.info(f"Scraped data loaded: {scraped_data}")
+
+        vulnerabilities = analyze_vulnerabilities(scraped_data)  # Анализ уязвимостей
+        logger.info(f"Vulnerabilities found: {vulnerabilities}")
+        return vulnerabilities
+    except Exception as e:
+        logger.error(f"Error in spider_and_analyze: {e}")
+        send_message_with_retry(chat_id, f"Произошла ошибка при анализе: {e}")
+        return {'error': str(e)}
+
+@retry(wait=wait_fixed(2), stop=stop_after_attempt(5))
+def send_message_with_retry(chat_id, message):
+    try:
+        bot.send_message(chat_id, message)
+    except ConnectionError as e:
+        logger.error(f"Error sending message: {e}")
+        raise
+
+@bot.message_handler(commands=['start'])
+def send_welcome(message):
+    bot.reply_to(message, "Привет! Введите URL для сканирования SQL инъекций. Напишите /scan <url>.")
+
+@bot.message_handler(commands=['scan'])
+def handle_scan(message):
+    try:
+        url = message.text.split()[1]  # Получаем URL из сообщения пользователя
+        if url.startswith("http"):
+            bot.reply_to(message, f"Начинаем сканирование сайта: {url}")
+            queue = multiprocessing.Queue()
+            process = multiprocessing.Process(target=run_async_in_process, args=(queue, url, message.chat.id))
+            process.start()
+
+            # Проверка состояния процесса и обновление пользователя
+            while process.is_alive():
+                bot.send_chat_action(message.chat.id, 'typing')
+                time.sleep(5)  # Обновление каждые 5 секунд
+
+            process.join()  # Ожидание завершения процесса
+            results = queue.get()  # Получение результатов из процесса
+
+            logger.info(f"Results received: {results}")
+
+            if 'error' in results:
+                bot.reply_to(message, f"Произошла ошибка: {results['error']}")
+            else:
+                results_message = format_results(results)
+                send_long_message(message.chat.id, results_message)
+        else:
+            bot.reply_to(message, "Пожалуйста, введите валидный URL, начиная с http:// или https://")
+    except IndexError:
+        bot.reply_to(message, "Пожалуйста, укажите URL после команды. Например: /scan http://example.com")
+    except Exception as e:
+        logger.error(f"Error in handle_scan: {e}")
+        bot.reply_to(message, f"Произошла ошибка: {e}")
+
+def format_results(vulnerabilities):
+    if not vulnerabilities:
+        return "Результаты сканирования:\nУязвимостей не найдено."
+
+    results_message = "Результаты сканирования:\n"
+    for result in vulnerabilities:
+        try:
+            results_message += f"URL: {result['url']}\n"
+            results_message += f"Параметр: {result['parameter']}\n"
+            results_message += f"Уязвимость: {result['is_vulnerable']}\n"
+            results_message += f"Время отклика: {result['response_time']} секунд\n"
+            if 'is_blindly_vulnerable' in result:
+                results_message += f"Слепая уязвимость: {result['is_blindly_vulnerable']}\n"
+            if 'is_error_based_vulnerable' in result:
+                results_message += f"Уязвимость на основе ошибок: {result['is_error_based_vulnerable']}\n"
+            results_message += "-----------------------------------\n"
+        except KeyError as e:
+            results_message += f"Ошибка: отсутствует ключ {e} в результатах для URL: {result.get('url', 'Unknown')}\n"
+
+    return results_message
+
+def send_long_message(chat_id, message):
+    max_message_length = 4096
+    for i in range(0, len(message), max_message_length):
+        send_message_with_retry(chat_id, message[i:i + max_message_length])
+
+if __name__ == "__main__":
+    bot.polling()
