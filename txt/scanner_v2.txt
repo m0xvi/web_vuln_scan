@@ -84,13 +84,22 @@ def create_results_keyboard(page, total_pages):
 
 def send_results_page(chat_id, page, message_id=None):
     logger.info(f"send_results_page called with page: {page}")
+
+    global results
+    try:
+        with open('results.json', 'r', encoding='utf-8') as f:
+            results = json.load(f)
+    except Exception as e:
+        logger.error(f"Error loading results from file: {e}")
+
+    logger.info(f"Current results: {results}")
     if not results:
         logger.error("No results to display.")
         bot.send_message(chat_id, "Нет результатов для отображения.")
         return
 
     total_pages = len(results)
-    logger.info(f"Total pages: {total_pages}, Current results: {results}")
+    logger.info(f"Total pages: {total_pages}")
     if page < 1 or page > total_pages:
         logger.error(f"Requested page {page} is out of range, total results: {total_pages}")
         return
@@ -109,6 +118,7 @@ def callback_query(call):
         req = json.loads(call.data)
         if req['method'] == 'pagination':
             page = req['page']
+            logger.info(f"Handling pagination to page: {page}")
             send_results_page(call.message.chat.id, page, call.message.message_id)
         elif req['method'] == 'noop':
             pass  # No operation, just a placeholder
@@ -285,11 +295,20 @@ def handle_scan(message, analyze_func, scan_type, url):
             bot.reply_to(message, f"Произошла ошибка: {vulnerabilities['error']}")
         else:
             results = format_results(vulnerabilities)
+            save_results_to_file(results)
             logger.info(f"Total results: {len(results)}")
             send_results_page(message.chat.id, 1)
     except Exception as e:
         logger.error(f"Error in handle_scan: {e}")
         bot.reply_to(message, f"Произошла ошибка: {e}")
+
+def save_results_to_file(results):
+    try:
+        with open('results.json', 'w', encoding='utf-8') as f:
+            json.dump(results, f, ensure_ascii=False, indent=4)
+        logger.info("Results saved to results.json")
+    except Exception as e:
+        logger.error(f"Error saving results to file: {e}")
 
 def run_async_in_process(queue, url, chat_id, analyze_func):
     try:
@@ -323,6 +342,7 @@ async def spider_and_analyze(url, chat_id, analyze_func):
         results.clear()
         formatted_results = format_results(vulnerabilities)
         results.extend(formatted_results)
+        save_results_to_file(results)
         logger.info(f"Total results: {len(results)}")
         generate_detailed_report(scraped_data, vulnerabilities)
 
