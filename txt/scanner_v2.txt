@@ -84,14 +84,7 @@ def create_results_keyboard(page, total_pages):
 
 def send_results_page(chat_id, page, message_id=None):
     logger.info(f"send_results_page called with page: {page}")
-
-    global results
-    try:
-        with open('results.json', 'r', encoding='utf-8') as f:
-            results = json.load(f)
-    except Exception as e:
-        logger.error(f"Error loading results from file: {e}")
-
+    load_results_from_file()  # Загружаем результаты из файла перед каждым отображением страницы
     logger.info(f"Current results: {results}")
     if not results:
         logger.error("No results to display.")
@@ -99,7 +92,7 @@ def send_results_page(chat_id, page, message_id=None):
         return
 
     total_pages = len(results)
-    logger.info(f"Total pages: {total_pages}")
+    logger.info(f"Total pages: {total_pages}, Current results: {results}")
     if page < 1 or page > total_pages:
         logger.error(f"Requested page {page} is out of range, total results: {total_pages}")
         return
@@ -309,6 +302,15 @@ def save_results_to_file(results):
         logger.info("Results saved to results.json")
     except Exception as e:
         logger.error(f"Error saving results to file: {e}")
+
+def load_results_from_file():
+    global results
+    try:
+        with open('results.json', 'r', encoding='utf-8') as f:
+            results = json.load(f)
+        logger.info("Results loaded from results.json")
+    except Exception as e:
+        logger.error(f"Error loading results from file: {e}")
 
 def run_async_in_process(queue, url, chat_id, analyze_func):
     try:

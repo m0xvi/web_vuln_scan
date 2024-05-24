@@ -34,7 +34,7 @@ main_menu_markup.add('Начать сканирование', 'Помощь', '�
 
 # Меню для выбора типа уязвимостей
 scan_menu_markup = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True)
-scan_menu_markup.add('SQL Injection', 'XSS', 'CSRF', 'LFI', 'RFI', 'IDOR')
+scan_menu_markup.add('SQL-Injection💉', 'XSS✂️', 'CSRF🍪', 'LFI📥', 'RFI📤', 'IDOR🔗')
 scan_menu_markup.add('Назад')
 
 # Кнопка отмены
@@ -52,29 +52,31 @@ def format_results(vulnerabilities):
     for vulnerability in vulnerabilities:
         if vulnerability.get('is_vulnerable'):
             scan_data = vulnerability.get('scan_data', 'N/A')
-            risk_level = "Высокий" if vulnerability['is_vulnerable'] else "Низкий"
+            risk_level = "🔴 Высокий" if vulnerability['is_vulnerable'] else "🔵 Низкий"
             formatted_result = (
-                f"<b>Дата и время сканирования:</b> <code>{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</code>\n"
-                f"<b>URL:</b> <code>{vulnerability['url']}</code>\n"
-                f"<b>Параметр:</b> <code>{vulnerability['parameter']}</code>\n"
-                f"<b>Уязвимость:</b> {'<b>Да</b>' if vulnerability['is_vulnerable'] else 'Нет'}\n"
-                f"<b>Тип уязвимости:</b> <code>{vulnerability['type']}</code>\n"
-                f"<b>Payload:</b> <code>{vulnerability.get('payload', 'N/A')}</code>\n"
-                f"<b>Время отклика:</b> <code>{vulnerability.get('response_time', 'N/A')}</code>\n"
-                f"<b>Описание уязвимости:</b> {scan_data}\n"
-                f"<b>Уровень риска:</b> {risk_level}\n"
+                f"<b>📆 Дата и время сканирования:</b> <code>{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</code>\n"
+                f"<b>📄 URL:</b> <code>{vulnerability['url']}</code>\n"
+                f"<b>📌 Параметр:</b> <code>{vulnerability['parameter']}</code>\n"
+                f"<b>⚠️ Уязвимость:</b> {'<b>Да</b>' if vulnerability['is_vulnerable'] else 'Нет'}\n"
+                f"<b>☠️ Тип уязвимости:</b> <code>{vulnerability['type']}</code>\n"
+                f"<b>⚙️ Payload:</b> <code>{vulnerability.get('payload', 'N/A')}</code>\n"
+                f"<b>⏳ Время отклика:</b> <code>{vulnerability.get('response_time', 'N/A')}</code>\n"
+                f"<b>📄 Описание уязвимости:</b> {scan_data}\n"
+                f"<b>🔍 Уровень риска:</b> {risk_level}\n"
             )
             formatted_results.append(formatted_result)
     logger.info(f"Total formatted results: {len(formatted_results)}")
     return formatted_results
 
 def create_results_keyboard(page, total_pages):
-    markup = InlineKeyboardMarkup()
+    markup = InlineKeyboardMarkup(row_width=3)
+    buttons = []
     if page > 1:
-        markup.add(InlineKeyboardButton(text='<--- Назад', callback_data=json.dumps({"method": "pagination", "page": page - 1})))
-    markup.add(InlineKeyboardButton(text=f'{page}/{total_pages}', callback_data='noop'))
+        buttons.append(InlineKeyboardButton(text='◀️', callback_data=json.dumps({"method": "pagination", "page": page - 1})))
+    buttons.append(InlineKeyboardButton(text=f'{page}/{total_pages}', callback_data='noop'))
     if page < total_pages:
-        markup.add(InlineKeyboardButton(text='Вперёд --->', callback_data=json.dumps({"method": "pagination", "page": page + 1})))
+        buttons.append(InlineKeyboardButton(text='▶️', callback_data=json.dumps({"method": "pagination", "page": page + 1})))
+    markup.row(*buttons)
     markup.add(
         InlineKeyboardButton(text='Рекомендации', callback_data=json.dumps({"method": "recommend", "page": page})),
         InlineKeyboardButton(text='Отчет', callback_data='{"method": "report"}'),
@@ -136,7 +138,7 @@ def callback_query(call):
 @bot.message_handler(commands=['start', 'help'])
 def send_welcome(message):
     bot.reply_to(message, """
-    Привет! Я бот для сканирования уязвимостей на веб-страницах.
+    👋 Привет! Я бот для сканирования уязвимостей на веб-страницах.
 
     Вот список доступных команд:
 
@@ -144,12 +146,12 @@ def send_welcome(message):
     /help - отобразить это сообщение
     /cancel - отменить текущее сканирование
 
-    /scan_sql <URL> - сканировать указанную страницу на наличие SQL-инъекций
-    /scan_xss <URL> - сканировать указанную страницу на наличие Межсайтового скриптинга (XSS)
-    /scan_csrf <URL> - сканировать указанную страницу на наличие Межсайтовой подделки запроса (CSRF)
-    /scan_lfi <URL> - сканировать указанную страницу на наличие Локального включения файлов (LFI)
-    /scan_rfi <URL> - сканировать указанную страницу на наличие Удаленного включения файлов (RFI)
-    /scan_idor <URL> - сканировать указанную страницу на наличие Небезопасных прямых ссылок на объекты (IDOR)
+    💉 /scan_sql <URL> - сканировать указанную страницу на наличие SQL-инъекций
+    ✂️ /scan_xss <URL> - сканировать указанную страницу на наличие Межсайтового скриптинга (XSS)
+    🍪 /scan_csrf <URL> - сканировать указанную страницу на наличие Межсайтовой подделки запроса (CSRF)
+    📥 /scan_lfi <URL> - сканировать указанную страницу на наличие Локального включения файлов (LFI)
+    📤 /scan_rfi <URL> - сканировать указанную страницу на наличие Удаленного включения файлов (RFI)
+    🔗 /scan_idor <URL> - сканировать указанную страницу на наличие Небезопасных прямых ссылок на объекты (IDOR)
 
     Пример использования:
     /scan_sql https://example.com/page
@@ -270,7 +272,7 @@ def handle_text(message):
 def handle_scan(message, analyze_func, scan_type, url):
     global vulnerabilities, results, current_scan
     try:
-        bot.reply_to(message, f"Начинаем сканирование сайта на наличие {scan_type}: {url}\n\nДля отмены сканирования введите /cancel, либо нажмите кнопку Отмена")
+        bot.reply_to(message, f"🔍 Начинаем сканирование сайта на наличие {scan_type}: {url}\n\nДля отмены сканирования введите /cancel, либо нажмите кнопку Отмена")
         queue = multiprocessing.Queue()
         current_scan = multiprocessing.Process(target=run_async_in_process,
                                                args=(queue, url, message.chat.id, analyze_func))
