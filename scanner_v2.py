@@ -47,40 +47,62 @@ results = []
 current_scan = None
 pending_url = None
 
+
 def escape_html(text):
     return html.escape(text)
+
+
 def format_results(vulnerabilities):
     formatted_results = []
     for vulnerability in vulnerabilities:
         if vulnerability.get('is_vulnerable'):
-            scan_data = vulnerability.get('scan_data', 'N/A')
-            risk_level = vulnerability.get('risk_level', '🔵 Нет')
-            vulnerability_type = vulnerability.get('type', 'Unknown')
-            description = escape_html(vulnerability.get('description', 'Описание уязвимости не найдено.'))
-            recommendation = escape_html(vulnerability.get('recommendation', 'Рекомендации не найдены.'))
-            formatted_result = (
-                f"<b>📆 Дата и время сканирования:</b> <code>{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</code>\n"
-                f"<b>📄 URL:</b> <code>{escape_html(vulnerability['url'])}</code>\n"
-                f"<b>📌 Параметр:</b> <code>{escape_html(vulnerability['parameter'])}</code>\n"
-                f"<b>⚠️ Уязвимость:</b> {'<b>Да</b>' if vulnerability['is_vulnerable'] else 'Нет'}\n"
-                f"<b>☠️ Тип уязвимости:</b> <code>{escape_html(vulnerability_type)}</code>\n"
-                f"<b>⚙️ Payload:</b> <code>{escape_html(vulnerability.get('payload', 'N/A'))}</code>\n"
-                f"<b>⏳ Время отклика:</b> <code>{escape_html(vulnerability.get('response_time', 'N/A'))}</code>\n"
-                f"<b>📄 Описание уязвимости:</b> {description}\n"
-                f"<b>🔍 Уровень риска:</b> {risk_level}\n"
-            )
+            result_parts = []
+
+            # Обязательные поля
+            result_parts.append(
+                f"<b>📆 Дата и время сканирования:</b> <code>{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</code>")
+            result_parts.append(f"<b>📄 URL:</b> <code>{escape_html(vulnerability['url'])}</code>")
+            result_parts.append(f"<b>⚠️ Уязвимость:</b> {'<b>Да</b>' if vulnerability['is_vulnerable'] else 'Нет'}")
+            result_parts.append(
+                f"<b>☠️ Тип уязвимости:</b> <code>{escape_html(vulnerability.get('type', 'Unknown'))}</code>")
+
+            # Опциональные поля
+            if 'parameter' in vulnerability:
+                result_parts.append(f"<b>📌 Параметр:</b> <code>{escape_html(vulnerability['parameter'])}</code>")
+            if 'payload' in vulnerability:
+                result_parts.append(f"<b>⚙️ Payload:</b> <code>{escape_html(vulnerability['payload'])}</code>")
+            if 'response_time' in vulnerability:
+                result_parts.append(
+                    f"<b>⏳ Время отклика:</b> <code>{escape_html(vulnerability['response_time'])}</code>")
+            if 'form_action' in vulnerability:
+                result_parts.append(f"<b>🔗 Action формы:</b> <code>{escape_html(vulnerability['form_action'])}</code>")
+            if 'form_method' in vulnerability:
+                result_parts.append(f"<b>📝 Метод формы:</b> <code>{escape_html(vulnerability['form_method'])}</code>")
+            if 'form_fields' in vulnerability:
+                result_parts.append(
+                    f"<b>🔍 Поля формы:</b> <code>{escape_html(', '.join(vulnerability['form_fields']))}</code>")
+
+            result_parts.append(f"<b>🔍 Уровень риска:</b> {escape_html(vulnerability.get('risk_level', '🔵 Нет'))}")
+            result_parts.append(
+                f"<b>📄 Описание уязвимости:</b> {escape_html(vulnerability.get('description', 'Описание уязвимости не найдено.'))}")
+
+            formatted_result = '\n'.join(result_parts)
             formatted_results.append(formatted_result)
+
     logger.info(f"Total formatted results: {len(formatted_results)}")
     return formatted_results
+
 
 def create_results_keyboard(page, total_pages):
     markup = InlineKeyboardMarkup(row_width=3)
     buttons = []
     if page > 1:
-        buttons.append(InlineKeyboardButton(text='◀️ Назад', callback_data=json.dumps({"method": "pagination", "page": page - 1})))
+        buttons.append(
+            InlineKeyboardButton(text='◀️ Назад', callback_data=json.dumps({"method": "pagination", "page": page - 1})))
     buttons.append(InlineKeyboardButton(text=f'{page}/{total_pages}', callback_data='noop'))
     if page < total_pages:
-        buttons.append(InlineKeyboardButton(text='Вперед ▶️', callback_data=json.dumps({"method": "pagination", "page": page + 1})))
+        buttons.append(InlineKeyboardButton(text='Вперед ▶️',
+                                            callback_data=json.dumps({"method": "pagination", "page": page + 1})))
     markup.row(*buttons)
     markup.add(
         InlineKeyboardButton(text='Рекомендации', callback_data=json.dumps({"method": "recommend", "page": page})),
@@ -88,6 +110,7 @@ def create_results_keyboard(page, total_pages):
         InlineKeyboardButton(text='Помощь', callback_data='{"method": "help"}')
     )
     return markup
+
 
 def send_results_page(chat_id, page, message_id=None):
     logger.info(f"send_results_page called with page: {page}")
@@ -111,6 +134,7 @@ def send_results_page(chat_id, page, message_id=None):
     else:
         bot.send_message(chat_id, results_message, reply_markup=markup, parse_mode='HTML')
 
+
 @bot.callback_query_handler(func=lambda call: True)
 def callback_query(call):
     try:
@@ -125,8 +149,7 @@ def callback_query(call):
         elif req['method'] == 'recommend':
             page = req['page']
             logger.info(f"Handling recommendations for page: {page}")
-            vulnerability_type = vulnerabilities[page - 1]['type']  # Индексы начинаются с 0
-            recommendation = vulnerabilities[page - 1]['recommendation']
+            recommendation = vulnerabilities[page - 1].get('recommendation', 'Рекомендации не найдены.')
             bot.send_message(call.message.chat.id, recommendation)
         elif req['method'] == 'report':
             send_report(call)
@@ -138,7 +161,6 @@ def callback_query(call):
     except Exception as e:
         logger.error(f"Error in callback_query: {e}")
         bot.send_message(call.message.chat.id, f"Произошла ошибка: {e}")
-
 
 
 @bot.message_handler(commands=['start', 'help'])
@@ -163,6 +185,7 @@ def send_welcome(message):
     /scan_sql https://example.com/page
     """, reply_markup=main_menu_markup)
 
+
 @bot.message_handler(commands=['cancel'])
 def cancel_scan(message):
     global current_scan, pending_url
@@ -173,6 +196,7 @@ def cancel_scan(message):
     else:
         bot.reply_to(message, "Нет активного сканирования для отмены.", reply_markup=main_menu_markup)
     pending_url = None
+
 
 @bot.message_handler(commands=['scan_sql', 'scan_xss', 'scan_csrf', 'scan_lfi', 'scan_rfi', 'scan_idor'])
 def handle_scan_command(message):
@@ -189,6 +213,7 @@ def handle_scan_command(message):
         scan_type = command_parts[0].replace('/scan_', '').upper()
         handle_scan(message, get_analyze_function(scan_type), scan_type, url)
 
+
 def get_analyze_function(scan_type):
     scan_type_to_function = {
         'SQL': analyze_sql_vulnerabilities,
@@ -200,13 +225,16 @@ def get_analyze_function(scan_type):
     }
     return scan_type_to_function.get(scan_type, None)
 
+
 @bot.message_handler(func=lambda message: message.text == 'Начать сканирование')
 def start_scan(message):
     bot.reply_to(message, "Выберите тип уязвимости для сканирования:", reply_markup=scan_menu_markup)
 
+
 @bot.callback_query_handler(func=lambda call: call.data == '{"method": "help"}')
 def send_help(message):
     send_welcome(message)  # Вызываем send_welcome с message
+
 
 @bot.message_handler(func=lambda message: message.text == 'О боте')
 def about(message):
@@ -226,15 +254,19 @@ def about(message):
     )
     bot.reply_to(message, about_text, reply_markup=main_menu_markup)
 
+
 @bot.message_handler(func=lambda message: message.text == 'Назад')
 def go_back(message):
     bot.reply_to(message, "Вы вернулись в главное меню. Выберите действие:", reply_markup=main_menu_markup)
+
 
 @bot.message_handler(func=lambda message: message.text in ['SQL Injection', 'XSS', 'CSRF', 'LFI', 'RFI', 'IDOR'])
 def handle_scan_type(message):
     global pending_url
     if current_scan and current_scan.is_alive():
-        bot.reply_to(message, "Пожалуйста, подождите завершения текущего сканирования или отмените его командой /cancel.", reply_markup=main_menu_markup)
+        bot.reply_to(message,
+                     "Пожалуйста, подождите завершения текущего сканирования или отмените его командой /cancel.",
+                     reply_markup=main_menu_markup)
         return
 
     scan_type_to_function = {
@@ -251,6 +283,7 @@ def handle_scan_type(message):
     pending_url = {'scan_type': scan_type, 'analyze_func': scan_type_to_function[scan_type]}
     bot.register_next_step_handler(message, validate_url)
 
+
 def validate_url(message):
     global pending_url
     url = message.text.strip()
@@ -260,8 +293,10 @@ def validate_url(message):
         handle_scan(message, pending_url['analyze_func'], pending_url['scan_type'], url)
         pending_url = None
     else:
-        bot.reply_to(message, "Пожалуйста, введите валидный URL, начиная с http:// или https://", reply_markup=cancel_markup)
+        bot.reply_to(message, "Пожалуйста, введите валидный URL, начиная с http:// или https://",
+                     reply_markup=cancel_markup)
         bot.register_next_step_handler(message, validate_url)
+
 
 @bot.message_handler(func=lambda message: True)
 def handle_text(message):
@@ -269,16 +304,19 @@ def handle_text(message):
         if message.text.lower() in ['/cancel', 'отмена']:
             cancel_scan(message)
         else:
-            bot.reply_to(message, "Пожалуйста, подождите завершения текущего сканирования или отмените его командой /cancel.")
+            bot.reply_to(message,
+                         "Пожалуйста, подождите завершения текущего сканирования или отмените его командой /cancel.")
     elif pending_url:
         validate_url(message)
     else:
         send_welcome(message)
 
+
 def handle_scan(message, analyze_func, scan_type, url):
     global vulnerabilities, results, current_scan
     try:
-        bot.reply_to(message, f"🔍 Начинаем сканирование сайта на наличие {scan_type}: {url}\n\nДля отмены сканирования введите /cancel, либо нажмите кнопку Отмена")
+        bot.reply_to(message,
+                     f"🔍 Начинаем сканирование сайта на наличие {scan_type}: {url}\n\nДля отмены сканирования введите /cancel, либо нажмите кнопку Отмена")
         queue = multiprocessing.Queue()
         current_scan = multiprocessing.Process(target=run_async_in_process,
                                                args=(queue, url, message.chat.id, analyze_func))
@@ -303,6 +341,7 @@ def handle_scan(message, analyze_func, scan_type, url):
         logger.error(f"Error in handle_scan: {e}")
         bot.reply_to(message, f"Произошла ошибка: {e}")
 
+
 def save_results_to_file(results):
     try:
         with open('results.json', 'w', encoding='utf-8') as f:
@@ -310,6 +349,7 @@ def save_results_to_file(results):
         logger.info("Results saved to results.json")
     except Exception as e:
         logger.error(f"Error saving results to file: {e}")
+
 
 def load_results_from_file():
     global results
@@ -322,16 +362,10 @@ def load_results_from_file():
 
 
 def run_async_in_process(queue, url, chat_id, analyze_func):
-    try:
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        results = loop.run_until_complete(spider_and_analyze(url, chat_id, analyze_func))
-        queue.put(results)
-    except Exception as e:
-        logger.error(f"Error in run_async_in_process: {e}")
-        queue.put({'error': str(e)})
-    finally:
-        loop.close()
+    loop = asyncio.get_event_loop()
+    results = loop.run_until_complete(spider_and_analyze(url, chat_id, analyze_func))
+    queue.put(results)
+
 
 async def spider_and_analyze(url, chat_id, analyze_func):
     try:
@@ -363,6 +397,7 @@ async def spider_and_analyze(url, chat_id, analyze_func):
         await send_message_with_retry(chat_id, f"Произошла ошибка при анализе: {e}")
         return {'error': str(e)}
 
+
 async def send_message_with_retry(chat_id, message, timeout=60):
     try:
         async with ClientSession() as session:
@@ -381,6 +416,7 @@ async def send_message_with_retry(chat_id, message, timeout=60):
         logger.error(f"Error sending message: {e}")
         raise
 
+
 @bot.callback_query_handler(func=lambda call: call.data == '{"method": "report"}')
 def send_report(call):
     try:
@@ -388,9 +424,11 @@ def send_report(call):
     except Exception as e:
         logger.error(f"Error in send_report: {e}")
 
+
 @bot.callback_query_handler(func=lambda call: call.data == '{"method": "help"}')
 def send_help(call):
     send_welcome(call)
+
 
 def generate_detailed_report(scraped_data, vulnerabilities):
     report = "Детальный отчет сканирования:\n\n"
@@ -414,7 +452,8 @@ def generate_detailed_report(scraped_data, vulnerabilities):
     report += "\n=== Найденные уязвимости ===\n"
     for result in vulnerabilities:
         report += f"URL: {result['url']}\n"
-        report += f"Параметр: {result['parameter']}\n"
+        if 'parameter' in result:
+            report += f"Параметр: {result['parameter']}\n"
         report += f"Уязвимость: {'Да' if result['is_vulnerable'] else 'Нет'}\n"
         report += f"Тип уязвимости: {result['type']}\n"
         if 'payload' in result:
@@ -429,6 +468,7 @@ def generate_detailed_report(scraped_data, vulnerabilities):
         file.write(report)
     logger.info(f"Detailed report generated at {report_path}")
     return report_path
+
 
 if __name__ == "__main__":
     try:

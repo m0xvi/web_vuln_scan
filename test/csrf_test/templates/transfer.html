@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Transfer</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <h1>Transfer Money</h1>
+    <p>Balance: ${{ balance }}</p>
+    <form method="POST" action="{{ url_for('transfer') }}">
+        <label for="to_user">Transfer to:</label>
+        <input type="text" id="to_user" name="to_user" required><br>
+        <label for="amount">Amount:</label>
+        <input type="number" id="amount" name="amount" required><br>
+        <input type="submit" value="Transfer">
+    </form>
+    <p>{{ get_flashed_messages()|join(', ') }}</p>
+    <a href="{{ url_for('logout') }}">Logout</a>
+</body>
+</html>

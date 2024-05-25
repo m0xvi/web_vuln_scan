@@ -6,21 +6,26 @@ import json
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-async def test_rfi(session, url, param, value):
+async def test_rfi(session, base_url, param):
     rfi_payloads = [
-        'http://example.com/shell.txt',
-        'http://testphp.vulnweb.com/listproducts.php',
-        'https://raw.githubusercontent.com/swisskyrepo/PayloadsAllTheThings/master/File%20Inclusion/Remote%20File%20Inclusion/remote_file.txt'
+        'https://raw.githubusercontent.com/your-username/your-repo/main/rfi_test.txt',
+        'https://raw.githubusercontent.com/m0xvi/web_vuln_scan/master/txt/rfi.txt',
+        'https://raw.githubusercontent.com/m0xvi/web_vuln_scan/master/txt/chuta',
     ]
     for payload in rfi_payloads:
-        payloaded_url = url.replace(f"{param}={value}", f"{param}={payload}")
+        # Формируем URL правильно, заменяя значение параметра
+        payloaded_url = f"{base_url.split('?')[0]}?{param}={payload}"
+        logger.info(f"Testing RFI with URL: {payloaded_url}")
         try:
             response = await session.get(payloaded_url)
             response_text = await response.text()
-            if 'example_shell' in response_text or 'Product' in response_text or 'Remote File Inclusion Test' in response_text:
+            logger.info(f"Response for {payloaded_url}: {response_text[:100]}")  # Логируем первые 100 символов ответа
+            # Проверка на наличие ожидаемого содержимого
+            if 'This is a test file for RFI' in response_text:
+                logger.info(f"RFI vulnerability found: {payloaded_url}")
                 return True, payloaded_url
         except Exception as e:
-            logger.error(f"Error testing RFI payload on {url}: {e}")
+            logger.error(f"Error testing RFI payload on {base_url}: {e}")
     return False, None
 
 async def analyze_rfi(scraped_data):
@@ -29,8 +34,9 @@ async def analyze_rfi(scraped_data):
         for page in scraped_data:
             url = page['URL']
             params = page.get('Parameters', {})
-            for param, value in params.items():
-                is_vulnerable, vulnerable_url = await test_rfi(session, url, param, value)
+            for param in params:
+                logger.info(f"Analyzing URL: {url} with param: {param}")
+                is_vulnerable, vulnerable_url = await test_rfi(session, url, param)
                 if is_vulnerable:
                     vulnerabilities.append({
                         'url': url,
@@ -38,7 +44,18 @@ async def analyze_rfi(scraped_data):
                         'is_vulnerable': True,
                         'type': 'RFI',
                         'payload': vulnerable_url,
-                        'scan_data': f"Мы отправили запрос на {vulnerable_url} с RFI полезной нагрузкой и сервер включил удаленный файл."
+                        'description': (
+                            "RFI (Remote File Inclusion) уязвимость позволяет злоумышленнику включать удаленные файлы на сервере, "
+                            "используя параметры URL, что может привести к выполнению произвольного кода."
+                        ),
+                        'risk_level': "🔴 Высокий",
+                        'recommendation': (
+                            "Для предотвращения RFI атак рекомендуется:\n"
+                            "1. Проверять и фильтровать все входные данные, исключая использование удаленных путей.\n"
+                            "2. Использовать белые списки допустимых значений для параметров, связанных с файлами.\n"
+                            "3. Отключить функции включения файлов из удаленных источников, если они не используются.\n"
+                            "4. Регулярно обновлять и патчить ПО.\n"
+                        )
                     })
     return vulnerabilities
 

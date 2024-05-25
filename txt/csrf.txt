@@ -1,19 +1,20 @@
-import asyncio
-import aiohttp
 import logging
 import json
+import asyncio
+import aiohttp
+from bs4 import BeautifulSoup
 
 # Настройка логирования
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 async def test_csrf(session, url, form):
-    # Попытка отправки формы без CSRF-токена
     form_data = {input['name']: input['value'] for input in form['inputs'] if input['name']}
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3"
     }
     response = await session.post(url, data=form_data, headers=headers)
+    logger.info(f"Tested CSRF for URL: {url} - Status Code: {response.status}")
     return response.status != 403
 
 async def analyze_csrf(scraped_data):
@@ -22,16 +23,33 @@ async def analyze_csrf(scraped_data):
         for page in scraped_data:
             url = page['URL']
             forms = page.get('Forms', [])
+            logger.info(f"Analyzing URL: {url} - Found Forms: {len(forms)}")
             for form in forms:
                 if await test_csrf(session, url, form):
+                    form_fields = [input['name'] for input in form['inputs'] if input['name']]
                     vulnerabilities.append({
                         'url': url,
-                        'parameter': 'N/A',
+                        'form_action': form['action'],
+                        'form_method': form['method'],
+                        'form_fields': form_fields,
                         'is_vulnerable': True,
                         'type': 'CSRF',
-                        'scan_data': f"Мы отправили форму на {url} без CSRF-токена и сервер принял запрос."
+                        'description': (
+                            "CSRF уязвимость позволяет злоумышленнику заставить пользователя выполнить "
+                            "нежелательное действие на сайте, на котором он авторизован."
+                        ),
+                        'risk_level': "🟠 Средний",
+                        'recommendation': (
+                            "Для предотвращения CSRF атак рекомендуется:\n"
+                            "1. Использовать уникальные CSRF-токены для каждой формы.\n"
+                            "2. Проверять наличие и валидность CSRF-токена при обработке формы на сервере.\n"
+                            "3. Ограничить время жизни CSRF-токена.\n"
+                            "4. Использовать заголовок 'SameSite' для cookie с значением 'Strict' или 'Lax'.\n"
+                            "5. Проверять источник запроса, сравнивая значение заголовка 'Origin' или 'Referer' с доверенными доменами."
+                        )
                     })
     return vulnerabilities
+
 
 def load_scraped_data(file_path):
     try:
@@ -48,3 +66,4 @@ if __name__ == '__main__':
     vulnerabilities = asyncio.run(analyze_csrf(scraped_data))
     with open('csrf_vulnerabilities.json', 'w') as f:
         json.dump(vulnerabilities, f, indent=4)
+    print("CSRF Scan Results:", json.dumps(vulnerabilities, indent=4))

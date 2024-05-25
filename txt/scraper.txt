@@ -70,7 +70,9 @@ async def get_forms(soup, url):
                 'value': input_tag.get('value', '')
             })
         forms.append(form_details)
+    logger.info(f"Extracted {len(forms)} forms from URL: {url}")
     return forms
+
 
 async def submit_forms(session, forms, url):
     for form in forms:

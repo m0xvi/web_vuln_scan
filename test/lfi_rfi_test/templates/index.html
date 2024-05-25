@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>LFI/RFI Test Application</title>
+</head>
+<body>
+    <h1>LFI/RFI Test Application</h1>
+    <h2>Local File Inclusion (LFI)</h2>
+    <p>Try accessing <a href="/include?page=templates/include.html">/include?page=templates/include.html</a></p>
+    <p>Or try including sensitive files like <a href="/include?page=../../../../etc/passwd">/include?page=../../../../etc/passwd</a></p>
+
+    <h2>Remote File Inclusion (RFI)</h2>
+    <p>Try accessing <a href="/rfi?url=https://raw.githubusercontent.com/swisskyrepo/PayloadsAllTheThings/master/File%20Inclusion/Remote%20File%20Inclusion/remote_file.txt">/rfi?url=https://raw.githubusercontent.com/swisskyrepo/PayloadsAllTheThings/master/File%20Inclusion/Remote%20File%20Inclusion/remote_file.txt</a></p>
+</body>
+</html>
