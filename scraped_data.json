@@ -1,6 +1,6 @@
 [
     {
-        "URL": "http://127.0.0.1:5000",
+        "URL": "http://127.0.0.1:5004",
         "Method": "GET",
         "Parameters": {},
         "Page Title": "No title",
@@ -10,7 +10,7 @@
         "HTML Content": "<html><head></head><body><h1>IDOR Test Application</h1>\n    <p>Try accessing user profiles by visiting URLs like <a href=\"/user?id=1\">/user?id=1</a></p>\n    <p>Or try changing the ID parameter to access other user profiles.</p>\n    </body></html>"
     },
     {
-        "URL": "http://127.0.0.1:5000/user?id=1",
+        "URL": "http://127.0.0.1:5004/user?id=1",
         "Method": "GET",
         "Parameters": {
             "id": [

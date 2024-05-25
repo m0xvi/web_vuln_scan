@@ -223,7 +223,6 @@ async def test_union_based_sql_injection(session, url, data):
                 }
     return {'url': url, 'is_vulnerable': False}
 
-
 async def analyze_vulnerabilities(data):
     vulnerabilities = []
     async with aiohttp.ClientSession() as session:

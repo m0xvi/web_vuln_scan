@@ -59,32 +59,27 @@ def format_results(vulnerabilities):
             result_parts = []
 
             # Обязательные поля
-            result_parts.append(
-                f"<b>📆 Дата и время сканирования:</b> <code>{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</code>")
-            result_parts.append(f"<b>📄 URL:</b> <code>{escape_html(vulnerability['url'])}</code>")
+            result_parts.append(f"<b>📆 Дата и время сканирования:</b> <code>{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</code>")
+            result_parts.append(f"<b>📄 URL:</b> <code>{escape_html(str(vulnerability['url']))}</code>")
             result_parts.append(f"<b>⚠️ Уязвимость:</b> {'<b>Да</b>' if vulnerability['is_vulnerable'] else 'Нет'}")
-            result_parts.append(
-                f"<b>☠️ Тип уязвимости:</b> <code>{escape_html(vulnerability.get('type', 'Unknown'))}</code>")
+            result_parts.append(f"<b>☠️ Тип уязвимости:</b> <code>{escape_html(str(vulnerability.get('type', 'Unknown')))}</code>")
 
             # Опциональные поля
             if 'parameter' in vulnerability:
-                result_parts.append(f"<b>📌 Параметр:</b> <code>{escape_html(vulnerability['parameter'])}</code>")
+                result_parts.append(f"<b>📌 Параметр:</b> <code>{escape_html(str(vulnerability['parameter']))}</code>")
             if 'payload' in vulnerability:
-                result_parts.append(f"<b>⚙️ Payload:</b> <code>{escape_html(vulnerability['payload'])}</code>")
+                result_parts.append(f"<b>⚙️ Payload:</b> <code>{escape_html(str(vulnerability['payload']))}</code>")
             if 'response_time' in vulnerability:
-                result_parts.append(
-                    f"<b>⏳ Время отклика:</b> <code>{escape_html(vulnerability['response_time'])}</code>")
+                result_parts.append(f"<b>⏳ Время отклика:</b> <code>{escape_html(str(vulnerability['response_time']))}</code>")
             if 'form_action' in vulnerability:
-                result_parts.append(f"<b>🔗 Action формы:</b> <code>{escape_html(vulnerability['form_action'])}</code>")
+                result_parts.append(f"<b>🔗 Action формы:</b> <code>{escape_html(str(vulnerability['form_action']))}</code>")
             if 'form_method' in vulnerability:
-                result_parts.append(f"<b>📝 Метод формы:</b> <code>{escape_html(vulnerability['form_method'])}</code>")
+                result_parts.append(f"<b>📝 Метод формы:</b> <code>{escape_html(str(vulnerability['form_method']))}</code>")
             if 'form_fields' in vulnerability:
-                result_parts.append(
-                    f"<b>🔍 Поля формы:</b> <code>{escape_html(', '.join(vulnerability['form_fields']))}</code>")
+                result_parts.append(f"<b>🔍 Поля формы:</b> <code>{escape_html(', '.join(vulnerability['form_fields']))}</code>")
 
-            result_parts.append(f"<b>🔍 Уровень риска:</b> {escape_html(vulnerability.get('risk_level', '🔵 Нет'))}")
-            result_parts.append(
-                f"<b>📄 Описание уязвимости:</b> {escape_html(vulnerability.get('description', 'Описание уязвимости не найдено.'))}")
+            result_parts.append(f"<b>🔍 Уровень риска:</b> {escape_html(str(vulnerability.get('risk_level', '🔵 Нет')))}")
+            result_parts.append(f"<b>📄 Описание уязвимости:</b> {escape_html(vulnerability.get('description', 'Описание уязвимости не найдено.'))}")
 
             formatted_result = '\n'.join(result_parts)
             formatted_results.append(formatted_result)

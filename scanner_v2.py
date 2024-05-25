@@ -7,6 +7,7 @@ import asyncio
 import logging
 import time
 import json
+from telebot import types
 from scraper import spider
 from sql import analyze_vulnerabilities as analyze_sql_vulnerabilities, load_scraped_data
 from xss import analyze_xss
@@ -29,8 +30,9 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Главное меню
-main_menu_markup = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True)
-main_menu_markup.add('Начать сканирование', 'Помощь', 'О боте')
+main_menu_markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+main_menu_markup.row(types.KeyboardButton('🔍 Начать сканирование'))
+main_menu_markup.row(types.KeyboardButton('ℹ️ Помощь'), types.KeyboardButton('🤖 О боте'))
 
 # Меню для выбора типа уязвимостей
 scan_menu_markup = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True)
@@ -61,28 +63,30 @@ def format_results(vulnerabilities):
             # Обязательные поля
             result_parts.append(
                 f"<b>📆 Дата и время сканирования:</b> <code>{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</code>")
-            result_parts.append(f"<b>📄 URL:</b> <code>{escape_html(vulnerability['url'])}</code>")
+            result_parts.append(f"<b>📄 URL:</b> <code>{escape_html(str(vulnerability['url']))}</code>")
             result_parts.append(f"<b>⚠️ Уязвимость:</b> {'<b>Да</b>' if vulnerability['is_vulnerable'] else 'Нет'}")
             result_parts.append(
-                f"<b>☠️ Тип уязвимости:</b> <code>{escape_html(vulnerability.get('type', 'Unknown'))}</code>")
+                f"<b>☠️ Тип уязвимости:</b> <code>{escape_html(str(vulnerability.get('type', 'Unknown')))}</code>")
 
             # Опциональные поля
             if 'parameter' in vulnerability:
-                result_parts.append(f"<b>📌 Параметр:</b> <code>{escape_html(vulnerability['parameter'])}</code>")
+                result_parts.append(f"<b>📌 Параметр:</b> <code>{escape_html(str(vulnerability['parameter']))}</code>")
             if 'payload' in vulnerability:
-                result_parts.append(f"<b>⚙️ Payload:</b> <code>{escape_html(vulnerability['payload'])}</code>")
+                result_parts.append(f"<b>⚙️ Payload:</b> <code>{escape_html(str(vulnerability['payload']))}</code>")
             if 'response_time' in vulnerability:
                 result_parts.append(
-                    f"<b>⏳ Время отклика:</b> <code>{escape_html(vulnerability['response_time'])}</code>")
+                    f"<b>⏳ Время отклика:</b> <code>{escape_html(str(vulnerability['response_time']))}</code>")
             if 'form_action' in vulnerability:
-                result_parts.append(f"<b>🔗 Action формы:</b> <code>{escape_html(vulnerability['form_action'])}</code>")
+                result_parts.append(
+                    f"<b>🔗 Action формы:</b> <code>{escape_html(str(vulnerability['form_action']))}</code>")
             if 'form_method' in vulnerability:
-                result_parts.append(f"<b>📝 Метод формы:</b> <code>{escape_html(vulnerability['form_method'])}</code>")
+                result_parts.append(
+                    f"<b>📝 Метод формы:</b> <code>{escape_html(str(vulnerability['form_method']))}</code>")
             if 'form_fields' in vulnerability:
                 result_parts.append(
                     f"<b>🔍 Поля формы:</b> <code>{escape_html(', '.join(vulnerability['form_fields']))}</code>")
 
-            result_parts.append(f"<b>🔍 Уровень риска:</b> {escape_html(vulnerability.get('risk_level', '🔵 Нет'))}")
+            result_parts.append(f"<b>🔍 Уровень риска:</b> {escape_html(str(vulnerability.get('risk_level', '🔵 Нет')))}")
             result_parts.append(
                 f"<b>📄 Описание уязвимости:</b> {escape_html(vulnerability.get('description', 'Описание уязвимости не найдено.'))}")
 
@@ -107,7 +111,7 @@ def create_results_keyboard(page, total_pages):
     markup.add(
         InlineKeyboardButton(text='Рекомендации', callback_data=json.dumps({"method": "recommend", "page": page})),
         InlineKeyboardButton(text='Отчет', callback_data='{"method": "report"}'),
-        InlineKeyboardButton(text='Помощь', callback_data='{"method": "help"}')
+        InlineKeyboardButton(text='ℹ️ Помощь', callback_data='{"method": "help"}')
     )
     return markup
 
@@ -226,7 +230,7 @@ def get_analyze_function(scan_type):
     return scan_type_to_function.get(scan_type, None)
 
 
-@bot.message_handler(func=lambda message: message.text == 'Начать сканирование')
+@bot.message_handler(func=lambda message: message.text == '🔍 Начать сканирование')
 def start_scan(message):
     bot.reply_to(message, "Выберите тип уязвимости для сканирования:", reply_markup=scan_menu_markup)
 
@@ -236,21 +240,37 @@ def send_help(message):
     send_welcome(message)  # Вызываем send_welcome с message
 
 
-@bot.message_handler(func=lambda message: message.text == 'О боте')
+@bot.message_handler(func=lambda message: message.text == '🤖 О боте')
 def about(message):
     about_text = (
         "Этот бот позволяет сканировать веб-приложения на наличие различных уязвимостей:\n"
-        "- SQL Injection\n"
-        "- XSS (Cross-Site Scripting)\n"
-        "- CSRF (Cross-Site Request Forgery)\n"
-        "- LFI (Local File Inclusion)\n"
-        "- RFI (Remote File Inclusion)\n"
-        "- IDOR (Insecure Direct Object Reference)\n\n"
+        "- SQL Injection (SQL-инъекции): SQL-инъекция позволяет злоумышленнику вмешиваться в запросы, которые приложение отправляет в базу данных. Это может привести к несанкционированному доступу к данным, их модификации или удалению.\n"
+        "- XSS (Cross-Site Scripting, межсайтовый скриптинг): XSS позволяет внедрять вредоносные скрипты на веб-страницы, которые затем выполняются в браузерах пользователей. Это может привести к краже данных сессий, подмене контента и распространению вредоносного ПО.\n"
+        "- CSRF (Cross-Site Request Forgery, межсайтовая подделка запроса): CSRF позволяет злоумышленнику заставить пользователя выполнить нежелательные действия на сайте, на котором он авторизован. Это может привести к изменению настроек пользователя, выполнению транзакций и другим нежелательным действиям.\n"
+        "- LFI (Local File Inclusion, локальное включение файлов): LFI позволяет злоумышленнику получить доступ к локальным файлам на сервере, используя относительные пути в параметрах URL. Это может привести к утечке конфиденциальной информации, такой как конфигурационные файлы и исходный код.\n"
+        "- RFI (Remote File Inclusion, удаленное включение файлов): RFI позволяет злоумышленнику включать удаленные файлы на сервере, используя параметры URL. Это может привести к выполнению произвольного кода и полной компрометации сервера.\n"
+        "- IDOR (Insecure Direct Object Reference, небезопасное прямое обращение к объекту): IDOR позволяет злоумышленнику получать доступ к данным других пользователей, изменяя значения параметров в URL. Это может привести к утечке конфиденциальной информации и несанкционированным изменениям данных.\n\n"
+        "Функциональность бота включает:\n"
+        "- Автоматическое сканирование веб-приложений на указанные типы уязвимостей\n"
+        "- Формирование подробных отчетов по результатам сканирования\n"
+        "- Интерактивное взаимодействие через команды и кнопки\n\n"
         "Используемые технологии:\n"
-        "- Python\n"
-        "- Библиотеки: requests, aiohttp, telebot\n"
-        "- Инструменты для анализа уязвимостей\n\n"
-        "Важно: этот бот может выдавать ложные срабатывания и не является абсолютно достоверным инструментом по поиску и устранению уязвимостей веб-приложений."
+        "- Язык программирования: Python\n"
+        "- Библиотеки: requests, aiohttp, telebot, multiprocessing, asyncio\n"
+        "- Инструменты для анализа уязвимостей и скрапинга веб-страниц\n\n"
+        "Особенности:\n"
+        "- Поддержка асинхронных операций для эффективного выполнения сканирований\n"
+        "- Возможность работы с несколькими типами уязвимостей\n"
+        "- Поддержка команд для управления сканированиями и получения помощи\n\n"
+        "Примеры использования:\n"
+        "- /scan_sql <URL> - сканировать указанную страницу на наличие SQL-инъекций\n"
+        "- /scan_xss <URL> - сканировать указанную страницу на наличие XSS\n"
+        "- /scan_csrf <URL> - сканировать указанную страницу на наличие CSRF\n"
+        "- /scan_lfi <URL> - сканировать указанную страницу на наличие LFI\n"
+        "- /scan_rfi <URL> - сканировать указанную страницу на наличие RFI\n"
+        "- /scan_idor <URL> - сканировать указанную страницу на наличие IDOR\n\n"
+        "Важно: этот бот может выдавать ложные срабатывания и не является абсолютно достоверным инструментом по поиску и устранению уязвимостей веб-приложений. "
+        "Рекомендуется использовать результаты сканирования в качестве предварительного анализа и дополнительно проверять найденные уязвимости вручную."
     )
     bot.reply_to(message, about_text, reply_markup=main_menu_markup)
 
