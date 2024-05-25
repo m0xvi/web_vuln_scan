@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>Reflected XSS</h2>
+<form method="get" action="{{ url_for('reflected') }}">
+    <input type="text" name="q" placeholder="Search..." value="{{ query }}">
+    <input type="submit" value="Search">
+</form>
+
+{% if query %}
+<p>Search results for: {{ query|safe }}</p>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>Stored XSS</h2>
+<form method="post" action="{{ url_for('stored') }}">
+    <textarea name="comment" placeholder="Leave a comment..."></textarea>
+    <input type="submit" value="Post Comment">
+</form>
+
+{% for comment in comments %}
+<p>{{ comment|safe }}</p>
+{% endfor %}
+{% endblock %}

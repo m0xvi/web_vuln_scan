@@ -1,3 +1,4 @@
+import html
 from datetime import datetime
 import aiohttp
 import telebot
@@ -13,7 +14,6 @@ from csrf import analyze_csrf
 from lfi import analyze_lfi
 from rfi import analyze_rfi
 from idor import analyze_idor
-from recommendations import generate_recommendation
 from requests.exceptions import ConnectionError, ReadTimeout
 from tenacity import retry, stop_after_attempt, wait_fixed
 from aiohttp import ClientSession, FormData
@@ -34,7 +34,7 @@ main_menu_markup.add('Начать сканирование', 'Помощь', '�
 
 # Меню для выбора типа уязвимостей
 scan_menu_markup = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True)
-scan_menu_markup.add('SQL-Injection💉', 'XSS✂️', 'CSRF🍪', 'LFI📥', 'RFI📤', 'IDOR🔗')
+scan_menu_markup.add('SQL Injection', 'XSS', 'CSRF', 'LFI', 'RFI', 'IDOR')
 scan_menu_markup.add('Назад')
 
 # Кнопка отмены
@@ -47,21 +47,26 @@ results = []
 current_scan = None
 pending_url = None
 
+def escape_html(text):
+    return html.escape(text)
 def format_results(vulnerabilities):
     formatted_results = []
     for vulnerability in vulnerabilities:
         if vulnerability.get('is_vulnerable'):
             scan_data = vulnerability.get('scan_data', 'N/A')
-            risk_level = "🔴 Высокий" if vulnerability['is_vulnerable'] else "🔵 Низкий"
+            risk_level = vulnerability.get('risk_level', '🔵 Нет')
+            vulnerability_type = vulnerability.get('type', 'Unknown')
+            description = escape_html(vulnerability.get('description', 'Описание уязвимости не найдено.'))
+            recommendation = escape_html(vulnerability.get('recommendation', 'Рекомендации не найдены.'))
             formatted_result = (
                 f"<b>📆 Дата и время сканирования:</b> <code>{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</code>\n"
-                f"<b>📄 URL:</b> <code>{vulnerability['url']}</code>\n"
-                f"<b>📌 Параметр:</b> <code>{vulnerability['parameter']}</code>\n"
+                f"<b>📄 URL:</b> <code>{escape_html(vulnerability['url'])}</code>\n"
+                f"<b>📌 Параметр:</b> <code>{escape_html(vulnerability['parameter'])}</code>\n"
                 f"<b>⚠️ Уязвимость:</b> {'<b>Да</b>' if vulnerability['is_vulnerable'] else 'Нет'}\n"
-                f"<b>☠️ Тип уязвимости:</b> <code>{vulnerability['type']}</code>\n"
-                f"<b>⚙️ Payload:</b> <code>{vulnerability.get('payload', 'N/A')}</code>\n"
-                f"<b>⏳ Время отклика:</b> <code>{vulnerability.get('response_time', 'N/A')}</code>\n"
-                f"<b>📄 Описание уязвимости:</b> {scan_data}\n"
+                f"<b>☠️ Тип уязвимости:</b> <code>{escape_html(vulnerability_type)}</code>\n"
+                f"<b>⚙️ Payload:</b> <code>{escape_html(vulnerability.get('payload', 'N/A'))}</code>\n"
+                f"<b>⏳ Время отклика:</b> <code>{escape_html(vulnerability.get('response_time', 'N/A'))}</code>\n"
+                f"<b>📄 Описание уязвимости:</b> {description}\n"
                 f"<b>🔍 Уровень риска:</b> {risk_level}\n"
             )
             formatted_results.append(formatted_result)
@@ -72,10 +77,10 @@ def create_results_keyboard(page, total_pages):
     markup = InlineKeyboardMarkup(row_width=3)
     buttons = []
     if page > 1:
-        buttons.append(InlineKeyboardButton(text='◀️', callback_data=json.dumps({"method": "pagination", "page": page - 1})))
+        buttons.append(InlineKeyboardButton(text='◀️ Назад', callback_data=json.dumps({"method": "pagination", "page": page - 1})))
     buttons.append(InlineKeyboardButton(text=f'{page}/{total_pages}', callback_data='noop'))
     if page < total_pages:
-        buttons.append(InlineKeyboardButton(text='▶️', callback_data=json.dumps({"method": "pagination", "page": page + 1})))
+        buttons.append(InlineKeyboardButton(text='Вперед ▶️', callback_data=json.dumps({"method": "pagination", "page": page + 1})))
     markup.row(*buttons)
     markup.add(
         InlineKeyboardButton(text='Рекомендации', callback_data=json.dumps({"method": "recommend", "page": page})),
@@ -119,21 +124,22 @@ def callback_query(call):
             pass  # No operation, just a placeholder
         elif req['method'] == 'recommend':
             page = req['page']
-            if page <= len(vulnerabilities):
-                recommendation = generate_recommendation(vulnerabilities[page - 1]['type'])  # Индексы начинаются с 0
-                bot.send_message(call.message.chat.id, recommendation)
-            else:
-                bot.send_message(call.message.chat.id, "Рекомендации недоступны для этой страницы.")
+            logger.info(f"Handling recommendations for page: {page}")
+            vulnerability_type = vulnerabilities[page - 1]['type']  # Индексы начинаются с 0
+            recommendation = vulnerabilities[page - 1]['recommendation']
+            bot.send_message(call.message.chat.id, recommendation)
         elif req['method'] == 'report':
             send_report(call)
         elif req['method'] == 'help':
-            send_help(call)
+            send_help(call.message)  # Передаем call.message, а не сам call
     except json.JSONDecodeError as e:
         logger.error(f"JSON decode error in callback_query: {e}")
         bot.send_message(call.message.chat.id, f"Произошла ошибка декодирования JSON: {e}")
     except Exception as e:
         logger.error(f"Error in callback_query: {e}")
         bot.send_message(call.message.chat.id, f"Произошла ошибка: {e}")
+
+
 
 @bot.message_handler(commands=['start', 'help'])
 def send_welcome(message):
@@ -198,9 +204,9 @@ def get_analyze_function(scan_type):
 def start_scan(message):
     bot.reply_to(message, "Выберите тип уязвимости для сканирования:", reply_markup=scan_menu_markup)
 
-@bot.message_handler(func=lambda message: message.text == 'Помощь')
-def help(message):
-    send_welcome(message)
+@bot.callback_query_handler(func=lambda call: call.data == '{"method": "help"}')
+def send_help(message):
+    send_welcome(message)  # Вызываем send_welcome с message
 
 @bot.message_handler(func=lambda message: message.text == 'О боте')
 def about(message):
@@ -314,6 +320,7 @@ def load_results_from_file():
     except Exception as e:
         logger.error(f"Error loading results from file: {e}")
 
+
 def run_async_in_process(queue, url, chat_id, analyze_func):
     try:
         loop = asyncio.new_event_loop()
@@ -350,9 +357,6 @@ async def spider_and_analyze(url, chat_id, analyze_func):
         logger.info(f"Total results: {len(results)}")
         generate_detailed_report(scraped_data, vulnerabilities)
 
-        # Отправка сообщения с результатами
-        send_results_page(chat_id, 1)
-
         return vulnerabilities
     except Exception as e:
         logger.error(f"Error in spider_and_analyze: {e}")
@@ -386,7 +390,7 @@ def send_report(call):
 
 @bot.callback_query_handler(func=lambda call: call.data == '{"method": "help"}')
 def send_help(call):
-    send_welcome(call.message)
+    send_welcome(call)
 
 def generate_detailed_report(scraped_data, vulnerabilities):
     report = "Детальный отчет сканирования:\n\n"
@@ -417,7 +421,7 @@ def generate_detailed_report(scraped_data, vulnerabilities):
             report += f"Payload: {result['payload']}\n"
         if 'response_time' in result:
             report += f"Время отклика: {result['response_time']}\n"
-        report += f"Рекомендация: {generate_recommendation(result['type'])}\n"
+        report += f"Рекомендация: {result.get('recommendation', 'Рекомендации не найдены.')}\n"
         report += "-----------------------------------\n"
 
     report_path = "report.txt"

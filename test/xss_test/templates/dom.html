@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>DOM XSS</h2>
+<p>Enter your name:</p>
+<input type="text" id="nameInput">
+<button onclick="displayMessage()">Submit</button>
+<p id="message"></p>
+
+<script>
+function displayMessage() {
+    var name = document.getElementById('nameInput').value;
+    var message = "Hello, " + name + "!";
+    document.getElementById('message').innerHTML = message;
+}
+</script>
+{% endblock %}

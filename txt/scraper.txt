@@ -5,14 +5,13 @@ from bs4 import BeautifulSoup
 from urllib.parse import urljoin, urlparse, parse_qs
 import logging
 import json
-import os
 
 # Настройка логирования
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Указать конкретную версию Chromium для скачивания
-chromium_executable_path = 'F:\code\Diplom\Vulnerability_scanner_Telegram_bot\chrome-win\chrome.exe'
+chromium_executable_path = 'F:/code/Diplom/chrome-win/chrome.exe'
 
 async def fetch_page(session, url, method='GET', data=None):
     try:
@@ -108,7 +107,7 @@ async def spider(base_url):
                     'Page Size': page_data['size'],
                     'Status Code': page_data['status'],
                     'Forms': forms,
-                    'HTML Content': content  # Сохранение HTML-контента
+                    'HTML Content': content
                 })
 
                 new_links = await get_links(content, url)
@@ -121,5 +120,5 @@ async def spider(base_url):
     return results
 
 if __name__ == '__main__':
-    url = 'http://testasp.vulnweb.com'
+    url = 'http://127.0.0.1:5000'
     asyncio.run(spider(url))

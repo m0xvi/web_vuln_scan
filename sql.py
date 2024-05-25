@@ -1,145 +1,257 @@
-import asyncio
 import aiohttp
-import time
+import asyncio
 import json
 import logging
-from statistics import mean, stdev
+import time
 
-# Настройка логирования
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-async def send_request(session, url, method, data, headers):
-    try:
-        async with session.request(method, url, data=data, headers=headers) as response:
-            return await response.text()
-    except aiohttp.ClientError as e:
-        logger.error(f"Request error: {e}")
-        return None
+async def test_time_based_sql_injection(session, url, data, expected_delay=5):
+    payloads = [
+        "';WAITFOR DELAY '0:0:5';--",
+        "';WAITFOR DELAY '0:0:10';--",
+        "';WAITFOR DELAY '0:0:15';--",
+    ]
+    for payload in payloads:
+        injected_data = {k: v + payload for k, v in data.items()}
+        logger.info(f"Testing time-based SQL injection with payload: {payload}")
+        start_time = time.time()
+        async with session.post(url, data=injected_data) as response:
+            await response.text()
+        response_time = time.time() - start_time
+        if response_time >= expected_delay:
+            return {
+                'url': url,
+                'parameter': injected_data,
+                'payload': payload,
+                'method': 'POST',
+                'vulnerable': True,
+                'response_time': response_time,
+                'is_vulnerable': True,
+                'type': 'Time-based',
+                'description': "Time-based SQL-инъекция использует задержки во времени ответа для выявления уязвимостей.",
+                'risk_level': "🔴 Высокий",
+                'recommendation': (
+                    "Для предотвращения Time-based SQL-инъекций рекомендуется:\n"
+                    "1. Использовать подготовленные выражения (prepared statements) и параметризованные запросы.\n"
+                    "   Пример для Python с использованием SQLite:\n"
+                    "   ```python\n"
+                    "   import sqlite3\n"
+                    "   conn = sqlite3.connect('example.db')\n"
+                    "   cursor = conn.cursor()\n"
+                    "   cursor.execute('SELECT * FROM users WHERE id = ?', (user_id,))\n"
+                    "   ```\n"
+                    "2. Проверять и фильтровать все входные данные, используя валидацию и экранирование.\n"
+                    "3. Использовать ORM (Object-Relational Mapping) для взаимодействия с базой данных.\n"
+                    "   Пример для SQLAlchemy:\n"
+                    "   ```python\n"
+                    "   from sqlalchemy import create_engine\n"
+                    "   from sqlalchemy.orm import sessionmaker\n"
+                    "   engine = create_engine('sqlite:///example.db')\n"
+                    "   Session = sessionmaker(bind=engine)\n"
+                    "   session = Session()\n"
+                    "   user = session.query(User).filter(User.id == user_id).first()\n"
+                    "   ```\n"
+                    "4. Ограничить права доступа к базе данных для веб-приложения.\n"
+                    "5. Регулярно обновлять и патчить используемое ПО.\n"
+                    "6. Использовать инструменты для динамического анализа безопасности (DAST) и статического анализа безопасности (SAST).\n"
+                    "Для получения дополнительной информации, посетите [OWASP Time-based SQL Injection](https://owasp.org/www-community/attacks/Time_based_SQL_Injection)."
+                )
+            }
+    return {'url': url, 'is_vulnerable': False}
 
-def analyze_response_times(times):
-    if len(times) > 2:
-        avg_time = mean(times)
-        deviation = stdev(times)
-        return any(t > avg_time + 2 * deviation for t in times)
-    return False
+async def test_blind_sql_injection(session, url, data):
+    true_payloads = [
+        "' OR 1=1--",
+        "' OR '1'='1'--",
+        "' OR 1=1#",
+    ]
+    false_payloads = [
+        "' OR 1=2--",
+        "' OR '1'='2'--",
+        "' OR 1=2#",
+    ]
+    for true_payload, false_payload in zip(true_payloads, false_payloads):
+        injected_data_true = {k: v + true_payload for k, v in data.items()}
+        injected_data_false = {k: v + false_payload for k, v in data.items()}
 
-async def test_time_based_sql_injection(session, url, data, expected_delay):
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3"
-    }
-    start_time = time.time()
-    response = await send_request(session, url, 'POST', data, headers)
-    if not response:
-        return False, 0
-    duration = time.time() - start_time
-    return duration > expected_delay, duration
+        async with session.post(url, data=injected_data_true) as response_true, session.post(url, data=injected_data_false) as response_false:
+            text_true = await response_true.text()
+            text_false = await response_false.text()
 
-async def test_blind_sql_injection(session, url, true_payload, false_payload):
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3"
-    }
-    true_response = await send_request(session, url, 'GET', true_payload, headers)
-    false_response = await send_request(session, url, 'GET', false_payload, headers)
-    if not true_response or not false_response:
-        return False
-    return true_response != false_response
+            if text_true != text_false:
+                return {
+                    'url': url,
+                    'parameter': injected_data_true,
+                    'payload': true_payload,
+                    'method': 'POST',
+                    'vulnerable': True,
+                    'is_vulnerable': True,
+                    'type': 'Blind',
+                    'description': "Blind SQL-инъекция позволяет определять наличие уязвимостей без вывода ошибок.",
+                    'risk_level': "🔴 Высокий",
+                    'recommendation': (
+                        "Для предотвращения Blind SQL-инъекций рекомендуется:\n"
+                        "1. Использовать подготовленные выражения (prepared statements) и параметризованные запросы.\n"
+                        "   Пример для Python с использованием SQLite:\n"
+                        "   ```python\n"
+                        "   import sqlite3\n"
+                        "   conn = sqlite3.connect('example.db')\n"
+                        "   cursor = conn.cursor()\n"
+                        "   cursor.execute('SELECT * FROM users WHERE id = ?', (user_id,))\n"
+                        "   ```\n"
+                        "2. Проверять и фильтровать все входные данные, используя валидацию и экранирование.\n"
+                        "3. Использовать ORM (Object-Relational Mapping) для взаимодействия с базой данных.\n"
+                        "   Пример для SQLAlchemy:\n"
+                        "   ```python\n"
+                        "   from sqlalchemy import create_engine\n"
+                        "   from sqlalchemy.orm import sessionmaker\n"
+                        "   engine = create_engine('sqlite:///example.db')\n"
+                        "   Session = sessionmaker(bind=engine)\n"
+                        "   session = Session()\n"
+                        "   user = session.query(User).filter(User.id == user_id).first()\n"
+                        "   ```\n"
+                        "4. Ограничить права доступа к базе данных для веб-приложения.\n"
+                        "5. Регулярно обновлять и патчить используемое ПО.\n"
+                        "6. Использовать инструменты для динамического анализа безопасности (DAST) и статического анализа безопасности (SAST).\n"
+                        "Для получения дополнительной информации, посетите [OWASP Blind SQL Injection](https://owasp.org/www-community/attacks/Blind_SQL_Injection)."
+                    )
+                }
+    return {'url': url, 'is_vulnerable': False}
 
-async def test_error_based_sql_injection(session, url, payload):
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3"
-    }
-    response = await send_request(session, url, 'GET', payload, headers)
-    if not response:
-        return False
-    return "error" in response.lower()
+async def test_error_based_sql_injection(session, url, data):
+    payloads = [
+        "' OR 1=1--",
+        "' OR 'a'='a'--",
+        "' OR 1=1#",
+        "' OR 'a'='a'#",
+    ]
+    for payload in payloads:
+        injected_data = {k: v + payload for k, v in data.items()}
+        logger.info(f"Testing error-based SQL injection with payload: {payload}")
+        async with session.post(url, data=injected_data) as response:
+            text = await response.text()
+            if "error" in text.lower() or "sql" in text.lower():
+                return {
+                    'url': url,
+                    'parameter': injected_data,
+                    'payload': payload,
+                    'method': 'POST',
+                    'vulnerable': True,
+                    'is_vulnerable': True,
+                    'type': 'Error-based',
+                    'description': "Error-based SQL-инъекция использует сообщения об ошибках для получения данных.",
+                    'risk_level': "🔴 Высокий",
+                    'recommendation': (
+                        "Для предотвращения Error-based SQL-инъекций рекомендуется:\n"
+                        "1. Использовать подготовленные выражения (prepared statements) и параметризованные запросы.\n"
+                        "   Пример для Python с использованием SQLite:\n"
+                        "   ```python\n"
+                        "   import sqlite3\n"
+                        "   conn = sqlite3.connect('example.db')\n"
+                        "   cursor = conn.cursor()\n"
+                        "   cursor.execute('SELECT * FROM users WHERE id = ?', (user_id,))\n"
+                        "   ```\n"
+                        "2. Проверять и фильтровать все входные данные, используя валидацию и экранирование.\n"
+                        "3. Использовать ORM (Object-Relational Mapping) для взаимодействия с базой данных.\n"
+                        "   Пример для SQLAlchemy:\n"
+                        "   ```python\n"
+                        "   from sqlalchemy import create_engine\n"
+                        "   from sqlalchemy.orm import sessionmaker\n"
+                        "   engine = create_engine('sqlite:///example.db')\n"
+                        "   Session = sessionmaker(bind=engine)\n"
+                        "   session = Session()\n"
+                        "   user = session.query(User).filter(User.id == user_id).first()\n"
+                        "   ```\n"
+                        "4. Ограничить права доступа к базе данных для веб-приложения.\n"
+                        "5. Регулярно обновлять и патчить используемое ПО.\n"
+                        "6. Использовать инструменты для динамического анализа безопасности (DAST) и статического анализа безопасности (SAST).\n"
+                        "Для получения дополнительной информации, посетите [OWASP Error-based SQL Injection](https://owasp.org/www-community/attacks/Error_based_SQL_Injection)."
+                    )
+                }
+    return {'url': url, 'is_vulnerable': False}
 
-async def analyze_vulnerabilities(scraped_data):
+async def test_union_based_sql_injection(session, url, data):
+    payloads = [
+        "' UNION SELECT null--",
+        "' UNION SELECT null, null--",
+        "' UNION SELECT null, null, null--",
+    ]
+    for payload in payloads:
+        injected_data = {k: v + payload for k, v in data.items()}
+        logger.info(f"Testing union-based SQL injection with payload: {payload}")
+        async with session.post(url, data=injected_data) as response:
+            text = await response.text()
+            if "error" not in text.lower() and "sql" not in text.lower():
+                return {
+                    'url': url,
+                    'parameter': injected_data,
+                    'payload': payload,
+                    'method': 'POST',
+                    'vulnerable': True,
+                    'is_vulnerable': True,
+                    'type': 'Union-based',
+                    'description': "Union-based SQL-инъекция позволяет объединять результаты нескольких запросов.",
+                    'risk_level': "🔴 Высокий",
+                    'recommendation': (
+                        "Для предотвращения Union-based SQL-инъекций рекомендуется:\n"
+                        "1. Использовать подготовленные выражения (prepared statements) и параметризованные запросы.\n"
+                        "   Пример для Python с использованием SQLite:\n"
+                        "   ```python\n"
+                        "   import sqlite3\n"
+                        "   conn = sqlite3.connect('example.db')\n"
+                        "   cursor = conn.cursor()\n"
+                        "   cursor.execute('SELECT * FROM users WHERE id = ?', (user_id,))\n"
+                        "   ```\n"
+                        "2. Проверять и фильтровать все входные данные, используя валидацию и экранирование.\n"
+                        "3. Использовать ORM (Object-Relational Mapping) для взаимодействия с базой данных.\n"
+                        "   Пример для SQLAlchemy:\n"
+                        "   ```python\n"
+                        "   from sqlalchemy import create_engine\n"
+                        "   from sqlalchemy.orm import sessionmaker\n"
+                        "   engine = create_engine('sqlite:///example.db')\n"
+                        "   Session = sessionmaker(bind=engine)\n"
+                        "   session = Session()\n"
+                        "   user = session.query(User).filter(User.id == user_id).first()\n"
+                        "   ```\n"
+                        "4. Ограничить права доступа к базе данных для веб-приложения.\n"
+                        "5. Регулярно обновлять и патчить используемое ПО.\n"
+                        "6. Использовать инструменты для динамического анализа безопасности (DAST) и статического анализа безопасности (SAST).\n"
+                        "Для получения дополнительной информации, посетите [OWASP Union-based SQL Injection](https://owasp.org/www-community/attacks/Union_SQL_Injection)."
+                    )
+                }
+    return {'url': url, 'is_vulnerable': False}
+
+async def analyze_vulnerabilities(data):
     vulnerabilities = []
-    logger.info(f"Analyzing vulnerabilities for scraped data: {scraped_data}")
-    time_based_payloads = ["';WAITFOR DELAY '0:0:7';--", "';WAITFOR DELAY '0:0:21';--"]
-    blind_payloads = [(" OR 1=1--", " OR 1=2--")]
-    error_based_payloads = ["' OR 1=1--"]
-
     async with aiohttp.ClientSession() as session:
-        for page in scraped_data:
-            url = page['URL']
-            forms = page.get('Forms', [])
-            for form in forms:
-                action = form['action'] if form['action'] else url
-                method = form['method']
-                inputs = form['inputs']
-                for input_field in inputs:
-                    name = input_field['name']
-                    if not name:
-                        continue
+        for entry in data:
+            url = entry['URL']
+            for form in entry.get('Forms', []):
+                form_action = form.get('action')
+                form_method = form.get('method', 'GET').upper()
+                form_inputs = form.get('inputs', [])
+                form_data = {input_tag['name']: input_tag.get('value', '') for input_tag in form_inputs if input_tag['type'] != 'submit'}
 
-                    for payload in time_based_payloads:
-                        data = {name: payload}
-                        try:
-                            delay_parts = payload.split(' ')[2].split(':')
-                            expected_delay = int(delay_parts[2].replace("';--", ""))
-                            is_vulnerable, duration = await test_time_based_sql_injection(session, action, data, expected_delay)
-                            vulnerabilities.append({
-                                'url': url,
-                                'parameter': name,
-                                'is_vulnerable': is_vulnerable,
-                                'response_time': duration,
-                                'payload': payload,
-                                'type': 'Time-based',
-                                'scan_data': f"Мы внедрили полезные нагрузки с различными временными задержками в параметр {name} и измерили время ответа."
-                            })
-                        except IndexError:
-                            logger.error(f"Error processing payload: {payload} for URL: {url}")
-                        except Exception as e:
-                            logger.error(f"Unexpected error: {e}")
+                if form_method == 'POST':
+                    vulnerability = await test_error_based_sql_injection(session, form_action, form_data)
+                    if vulnerability['is_vulnerable']:
+                        vulnerabilities.append(vulnerability)
 
-                    for true_payload, false_payload in blind_payloads:
-                        data_true = {name: true_payload}
-                        data_false = {name: false_payload}
-                        try:
-                            is_vulnerable = await test_blind_sql_injection(session, action, data_true, data_false)
-                            vulnerabilities.append({
-                                'url': url,
-                                'parameter': name,
-                                'is_vulnerable': is_vulnerable,
-                                'payload': true_payload if is_vulnerable else false_payload,
-                                'type': 'Blind',
-                                'scan_data': f"Мы протестировали параметр {name} с истинными и ложными полезными нагрузками и сравнили ответы."
-                            })
-                        except Exception as e:
-                            logger.error(f"Unexpected error: {e}")
+                    vulnerability = await test_union_based_sql_injection(session, form_action, form_data)
+                    if vulnerability['is_vulnerable']:
+                        vulnerabilities.append(vulnerability)
 
-                    for payload in error_based_payloads:
-                        data = {name: payload}
-                        try:
-                            is_vulnerable = await test_error_based_sql_injection(session, action, data)
-                            vulnerabilities.append({
-                                'url': url,
-                                'parameter': name,
-                                'is_vulnerable': is_vulnerable,
-                                'payload': payload,
-                                'type': 'Error-based',
-                                'scan_data': f"Мы внедрили полезные нагрузки, основанные на ошибках, в параметр {name} и проверили наличие сообщений об ошибках в ответе."
-                            })
-                        except Exception as e:
-                            logger.error(f"Unexpected error: {e}")
+                    vulnerability = await test_time_based_sql_injection(session, form_action, form_data)
+                    if vulnerability['is_vulnerable']:
+                        vulnerabilities.append(vulnerability)
 
-    logger.info(f"Vulnerabilities found: {vulnerabilities}")
+                    vulnerability = await test_blind_sql_injection(session, form_action, form_data)
+                    if vulnerability['is_vulnerable']:
+                        vulnerabilities.append(vulnerability)
     return vulnerabilities
 
 def load_scraped_data(file_path):
-    try:
-        with open(file_path, 'r') as file:
-            data = json.load(file)
-        logger.info(f"Scraped data loaded from {file_path}")
-        return data
-    except Exception as e:
-        logger.error(f"Error loading scraped data from {file_path}: {e}")
-        return []
-
-if __name__ == '__main__':
-    scraped_data = load_scraped_data('scraped_data.json')
-    vulnerabilities = asyncio.run(analyze_vulnerabilities(scraped_data))
-    with open('vulnerabilities.json', 'w') as f:
-        json.dump(vulnerabilities, f, indent=4)
+    with open(file_path, 'r', encoding='utf-8') as f:
+        return json.load(f)
