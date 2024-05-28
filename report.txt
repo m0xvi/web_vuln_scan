@@ -1,36 +1,506 @@
 Детальный отчет сканирования:
 
 === Данные скрапера ===
-URL: http://127.0.0.1:5004
+URL: http://127.0.0.1:5001
 Метод: GET
 Параметры: {}
-Заголовок страницы: No title
-Размер страницы: 0.20703125 KB
+Заголовок страницы: XSS Test App
+Размер страницы: 0.7978515625 KB
 Код состояния: 200
 Формы:
 -----------------------------------
-URL: http://127.0.0.1:5004/user?id=1
+URL: http://127.0.0.1:5001/dom
 Метод: GET
-Параметры: {
-    "id": [
-        "1"
-    ]
-}
-Заголовок страницы: No title
-Размер страницы: 0.052734375 KB
+Параметры: {}
+Заголовок страницы: XSS Test App
+Размер страницы: 1.0283203125 KB
+Код состояния: 200
+Формы:
+-----------------------------------
+URL: http://127.0.0.1:5001/stored
+Метод: GET
+Параметры: {}
+Заголовок страницы: XSS Test App
+Размер страницы: 0.8623046875 KB
+Код состояния: 200
+Формы:
+  Action: http://127.0.0.1:5001/stored
+  Method: POST
+  Inputs:
+    - {'type': 'text', 'name': 'comment', 'value': ''}
+    - {'type': 'submit', 'name': None, 'value': 'Post Comment'}
+-----------------------------------
+URL: http://127.0.0.1:5001/reflected
+Метод: GET
+Параметры: {}
+Заголовок страницы: XSS Test App
+Размер страницы: 0.853515625 KB
+Код состояния: 200
+Формы:
+  Action: http://127.0.0.1:5001/reflected
+  Method: GET
+  Inputs:
+    - {'type': 'text', 'name': 'q', 'value': ''}
+    - {'type': 'submit', 'name': None, 'value': 'Search'}
+-----------------------------------
+URL: http://127.0.0.1:5001/
+Метод: GET
+Параметры: {}
+Заголовок страницы: XSS Test App
+Размер страницы: 0.7978515625 KB
 Код состояния: 200
 Формы:
 -----------------------------------
 
 === Найденные уязвимости ===
-URL: http://127.0.0.1:5004/user?id=1
-Параметр: id
+URL: N/A
+Параметр: N/A
 Уязвимость: Да
-Тип уязвимости: IDOR
-Payload: http://127.0.0.1:5004/user?id=2
-Рекомендация: Для предотвращения IDOR атак рекомендуется:
-1. Использовать проверки прав доступа на сервере для каждого запроса.
-2. Не полагаться только на скрытие параметров в URL для обеспечения безопасности.
-3. Использовать сложные идентификаторы объектов, которые трудно предугадать.
-4. Регулярно проверять и обновлять код для предотвращения уязвимостей.
+Тип уязвимости: Static Analysis
+Payload: function displayMessage() {
+    var name = document.getElementById('nameInput').value;
+    var message = "Hello, " + name + "!";
+    document.getElementById('message').innerHTML = message;
+}
+Рекомендация: Рекомендуется избегать использования 'document.write' и 'innerHTML'. Вместо этого используйте безопасные методы манипуляции DOM, такие как 'textContent' или 'innerText'. Также убедитесь, что все данные, используемые в этих функциях, проходят валидацию и экранирование.
+-----------------------------------
+URL: http://127.0.0.1:5001/stored
+Параметр: comment
+Уязвимость: Да
+Тип уязвимости: XSS
+Payload: <script>alert('XSS')</script>
+Рекомендация: Для предотвращения XSS атак рекомендуется:
+1. Экранировать все входные данные перед их выводом на страницу.
+   Пример для Python:
+   ```python
+   from markupsafe import escape
+   safe_input = escape(user_input)
+   ```
+2. Использовать Content Security Policy (CSP) для ограничения источников выполнения скриптов.
+   Пример настройки CSP:
+   ```html
+   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self';">
+   ```
+3. Проверять и фильтровать все входные данные, используя белые списки допустимых значений.
+4. Использовать безопасные функции для манипуляции DOM, такие как 'textContent' вместо 'innerHTML'.
+-----------------------------------
+URL: http://127.0.0.1:5001/stored
+Параметр: comment
+Уязвимость: Да
+Тип уязвимости: XSS
+Payload: <img src=x onerror=alert('XSS')>
+Рекомендация: Для предотвращения XSS атак рекомендуется:
+1. Экранировать все входные данные перед их выводом на страницу.
+   Пример для Python:
+   ```python
+   from markupsafe import escape
+   safe_input = escape(user_input)
+   ```
+2. Использовать Content Security Policy (CSP) для ограничения источников выполнения скриптов.
+   Пример настройки CSP:
+   ```html
+   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self';">
+   ```
+3. Проверять и фильтровать все входные данные, используя белые списки допустимых значений.
+4. Использовать безопасные функции для манипуляции DOM, такие как 'textContent' вместо 'innerHTML'.
+-----------------------------------
+URL: http://127.0.0.1:5001/stored
+Параметр: comment
+Уязвимость: Да
+Тип уязвимости: XSS
+Payload: <svg/onload=alert('XSS')>
+Рекомендация: Для предотвращения XSS атак рекомендуется:
+1. Экранировать все входные данные перед их выводом на страницу.
+   Пример для Python:
+   ```python
+   from markupsafe import escape
+   safe_input = escape(user_input)
+   ```
+2. Использовать Content Security Policy (CSP) для ограничения источников выполнения скриптов.
+   Пример настройки CSP:
+   ```html
+   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self';">
+   ```
+3. Проверять и фильтровать все входные данные, используя белые списки допустимых значений.
+4. Использовать безопасные функции для манипуляции DOM, такие как 'textContent' вместо 'innerHTML'.
+-----------------------------------
+URL: http://127.0.0.1:5001/stored
+Параметр: comment
+Уязвимость: Да
+Тип уязвимости: XSS
+Payload: <details/open ontoggle=alert('XSS')>
+Рекомендация: Для предотвращения XSS атак рекомендуется:
+1. Экранировать все входные данные перед их выводом на страницу.
+   Пример для Python:
+   ```python
+   from markupsafe import escape
+   safe_input = escape(user_input)
+   ```
+2. Использовать Content Security Policy (CSP) для ограничения источников выполнения скриптов.
+   Пример настройки CSP:
+   ```html
+   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self';">
+   ```
+3. Проверять и фильтровать все входные данные, используя белые списки допустимых значений.
+4. Использовать безопасные функции для манипуляции DOM, такие как 'textContent' вместо 'innerHTML'.
+-----------------------------------
+URL: http://127.0.0.1:5001/stored
+Параметр: comment
+Уязвимость: Да
+Тип уязвимости: XSS
+Payload: <a href='javascript:alert("XSS")'>Click me</a>
+Рекомендация: Для предотвращения XSS атак рекомендуется:
+1. Экранировать все входные данные перед их выводом на страницу.
+   Пример для Python:
+   ```python
+   from markupsafe import escape
+   safe_input = escape(user_input)
+   ```
+2. Использовать Content Security Policy (CSP) для ограничения источников выполнения скриптов.
+   Пример настройки CSP:
+   ```html
+   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self';">
+   ```
+3. Проверять и фильтровать все входные данные, используя белые списки допустимых значений.
+4. Использовать безопасные функции для манипуляции DOM, такие как 'textContent' вместо 'innerHTML'.
+-----------------------------------
+URL: http://127.0.0.1:5001/stored
+Параметр: comment
+Уязвимость: Да
+Тип уязвимости: XSS
+Payload: <script>document.body.innerHTML='XSS'</script>
+Рекомендация: Для предотвращения XSS атак рекомендуется:
+1. Экранировать все входные данные перед их выводом на страницу.
+   Пример для Python:
+   ```python
+   from markupsafe import escape
+   safe_input = escape(user_input)
+   ```
+2. Использовать Content Security Policy (CSP) для ограничения источников выполнения скриптов.
+   Пример настройки CSP:
+   ```html
+   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self';">
+   ```
+3. Проверять и фильтровать все входные данные, используя белые списки допустимых значений.
+4. Использовать безопасные функции для манипуляции DOM, такие как 'textContent' вместо 'innerHTML'.
+-----------------------------------
+URL: http://127.0.0.1:5001/stored
+Параметр: comment
+Уязвимость: Да
+Тип уязвимости: XSS
+Payload: <script>alert('XSS')</script>
+Рекомендация: Для предотвращения XSS атак рекомендуется:
+1. Экранировать все входные данные перед их выводом на страницу.
+   Пример для Python:
+   ```python
+   from markupsafe import escape
+   safe_input = escape(user_input)
+   ```
+2. Использовать Content Security Policy (CSP) для ограничения источников выполнения скриптов.
+   Пример настройки CSP:
+   ```html
+   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self';">
+   ```
+3. Проверять и фильтровать все входные данные, используя белые списки допустимых значений.
+4. Использовать безопасные функции для манипуляции DOM, такие как 'textContent' вместо 'innerHTML'.
+-----------------------------------
+URL: http://127.0.0.1:5001/stored
+Параметр: comment
+Уязвимость: Да
+Тип уязвимости: XSS
+Payload: <img src=x onerror=alert('XSS')>
+Рекомендация: Для предотвращения XSS атак рекомендуется:
+1. Экранировать все входные данные перед их выводом на страницу.
+   Пример для Python:
+   ```python
+   from markupsafe import escape
+   safe_input = escape(user_input)
+   ```
+2. Использовать Content Security Policy (CSP) для ограничения источников выполнения скриптов.
+   Пример настройки CSP:
+   ```html
+   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self';">
+   ```
+3. Проверять и фильтровать все входные данные, используя белые списки допустимых значений.
+4. Использовать безопасные функции для манипуляции DOM, такие как 'textContent' вместо 'innerHTML'.
+-----------------------------------
+URL: http://127.0.0.1:5001/stored
+Параметр: comment
+Уязвимость: Да
+Тип уязвимости: XSS
+Payload: <svg/onload=alert('XSS')>
+Рекомендация: Для предотвращения XSS атак рекомендуется:
+1. Экранировать все входные данные перед их выводом на страницу.
+   Пример для Python:
+   ```python
+   from markupsafe import escape
+   safe_input = escape(user_input)
+   ```
+2. Использовать Content Security Policy (CSP) для ограничения источников выполнения скриптов.
+   Пример настройки CSP:
+   ```html
+   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self';">
+   ```
+3. Проверять и фильтровать все входные данные, используя белые списки допустимых значений.
+4. Использовать безопасные функции для манипуляции DOM, такие как 'textContent' вместо 'innerHTML'.
+-----------------------------------
+URL: http://127.0.0.1:5001/stored
+Параметр: comment
+Уязвимость: Да
+Тип уязвимости: XSS
+Payload: <img src=x onload=alert('XSS')>
+Рекомендация: Для предотвращения XSS атак рекомендуется:
+1. Экранировать все входные данные перед их выводом на страницу.
+   Пример для Python:
+   ```python
+   from markupsafe import escape
+   safe_input = escape(user_input)
+   ```
+2. Использовать Content Security Policy (CSP) для ограничения источников выполнения скриптов.
+   Пример настройки CSP:
+   ```html
+   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self';">
+   ```
+3. Проверять и фильтровать все входные данные, используя белые списки допустимых значений.
+4. Использовать безопасные функции для манипуляции DOM, такие как 'textContent' вместо 'innerHTML'.
+-----------------------------------
+URL: http://127.0.0.1:5001/stored
+Параметр: comment
+Уязвимость: Да
+Тип уязвимости: XSS
+Payload: <a src=x onload=alert('XSS')>Click me</a>
+Рекомендация: Для предотвращения XSS атак рекомендуется:
+1. Экранировать все входные данные перед их выводом на страницу.
+   Пример для Python:
+   ```python
+   from markupsafe import escape
+   safe_input = escape(user_input)
+   ```
+2. Использовать Content Security Policy (CSP) для ограничения источников выполнения скриптов.
+   Пример настройки CSP:
+   ```html
+   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self';">
+   ```
+3. Проверять и фильтровать все входные данные, используя белые списки допустимых значений.
+4. Использовать безопасные функции для манипуляции DOM, такие как 'textContent' вместо 'innerHTML'.
+-----------------------------------
+URL: http://127.0.0.1:5001/reflected
+Параметр: q
+Уязвимость: Да
+Тип уязвимости: XSS
+Payload: <script>alert('XSS')</script>
+Рекомендация: Для предотвращения XSS атак рекомендуется:
+1. Экранировать все входные данные перед их выводом на страницу.
+   Пример для Python:
+   ```python
+   from markupsafe import escape
+   safe_input = escape(user_input)
+   ```
+2. Использовать Content Security Policy (CSP) для ограничения источников выполнения скриптов.
+   Пример настройки CSP:
+   ```html
+   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self';">
+   ```
+3. Проверять и фильтровать все входные данные, используя белые списки допустимых значений.
+4. Использовать безопасные функции для манипуляции DOM, такие как 'textContent' вместо 'innerHTML'.
+-----------------------------------
+URL: http://127.0.0.1:5001/reflected
+Параметр: q
+Уязвимость: Да
+Тип уязвимости: XSS
+Payload: <img src=x onerror=alert('XSS')>
+Рекомендация: Для предотвращения XSS атак рекомендуется:
+1. Экранировать все входные данные перед их выводом на страницу.
+   Пример для Python:
+   ```python
+   from markupsafe import escape
+   safe_input = escape(user_input)
+   ```
+2. Использовать Content Security Policy (CSP) для ограничения источников выполнения скриптов.
+   Пример настройки CSP:
+   ```html
+   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self';">
+   ```
+3. Проверять и фильтровать все входные данные, используя белые списки допустимых значений.
+4. Использовать безопасные функции для манипуляции DOM, такие как 'textContent' вместо 'innerHTML'.
+-----------------------------------
+URL: http://127.0.0.1:5001/reflected
+Параметр: q
+Уязвимость: Да
+Тип уязвимости: XSS
+Payload: <svg/onload=alert('XSS')>
+Рекомендация: Для предотвращения XSS атак рекомендуется:
+1. Экранировать все входные данные перед их выводом на страницу.
+   Пример для Python:
+   ```python
+   from markupsafe import escape
+   safe_input = escape(user_input)
+   ```
+2. Использовать Content Security Policy (CSP) для ограничения источников выполнения скриптов.
+   Пример настройки CSP:
+   ```html
+   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self';">
+   ```
+3. Проверять и фильтровать все входные данные, используя белые списки допустимых значений.
+4. Использовать безопасные функции для манипуляции DOM, такие как 'textContent' вместо 'innerHTML'.
+-----------------------------------
+URL: http://127.0.0.1:5001/reflected
+Параметр: q
+Уязвимость: Да
+Тип уязвимости: XSS
+Payload: <details/open ontoggle=alert('XSS')>
+Рекомендация: Для предотвращения XSS атак рекомендуется:
+1. Экранировать все входные данные перед их выводом на страницу.
+   Пример для Python:
+   ```python
+   from markupsafe import escape
+   safe_input = escape(user_input)
+   ```
+2. Использовать Content Security Policy (CSP) для ограничения источников выполнения скриптов.
+   Пример настройки CSP:
+   ```html
+   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self';">
+   ```
+3. Проверять и фильтровать все входные данные, используя белые списки допустимых значений.
+4. Использовать безопасные функции для манипуляции DOM, такие как 'textContent' вместо 'innerHTML'.
+-----------------------------------
+URL: http://127.0.0.1:5001/reflected
+Параметр: q
+Уязвимость: Да
+Тип уязвимости: XSS
+Payload: <a href='javascript:alert("XSS")'>Click me</a>
+Рекомендация: Для предотвращения XSS атак рекомендуется:
+1. Экранировать все входные данные перед их выводом на страницу.
+   Пример для Python:
+   ```python
+   from markupsafe import escape
+   safe_input = escape(user_input)
+   ```
+2. Использовать Content Security Policy (CSP) для ограничения источников выполнения скриптов.
+   Пример настройки CSP:
+   ```html
+   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self';">
+   ```
+3. Проверять и фильтровать все входные данные, используя белые списки допустимых значений.
+4. Использовать безопасные функции для манипуляции DOM, такие как 'textContent' вместо 'innerHTML'.
+-----------------------------------
+URL: http://127.0.0.1:5001/reflected
+Параметр: q
+Уязвимость: Да
+Тип уязвимости: XSS
+Payload: <script>document.body.innerHTML='XSS'</script>
+Рекомендация: Для предотвращения XSS атак рекомендуется:
+1. Экранировать все входные данные перед их выводом на страницу.
+   Пример для Python:
+   ```python
+   from markupsafe import escape
+   safe_input = escape(user_input)
+   ```
+2. Использовать Content Security Policy (CSP) для ограничения источников выполнения скриптов.
+   Пример настройки CSP:
+   ```html
+   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self';">
+   ```
+3. Проверять и фильтровать все входные данные, используя белые списки допустимых значений.
+4. Использовать безопасные функции для манипуляции DOM, такие как 'textContent' вместо 'innerHTML'.
+-----------------------------------
+URL: http://127.0.0.1:5001/reflected
+Параметр: q
+Уязвимость: Да
+Тип уязвимости: XSS
+Payload: <script>alert('XSS')</script>
+Рекомендация: Для предотвращения XSS атак рекомендуется:
+1. Экранировать все входные данные перед их выводом на страницу.
+   Пример для Python:
+   ```python
+   from markupsafe import escape
+   safe_input = escape(user_input)
+   ```
+2. Использовать Content Security Policy (CSP) для ограничения источников выполнения скриптов.
+   Пример настройки CSP:
+   ```html
+   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self';">
+   ```
+3. Проверять и фильтровать все входные данные, используя белые списки допустимых значений.
+4. Использовать безопасные функции для манипуляции DOM, такие как 'textContent' вместо 'innerHTML'.
+-----------------------------------
+URL: http://127.0.0.1:5001/reflected
+Параметр: q
+Уязвимость: Да
+Тип уязвимости: XSS
+Payload: <img src=x onerror=alert('XSS')>
+Рекомендация: Для предотвращения XSS атак рекомендуется:
+1. Экранировать все входные данные перед их выводом на страницу.
+   Пример для Python:
+   ```python
+   from markupsafe import escape
+   safe_input = escape(user_input)
+   ```
+2. Использовать Content Security Policy (CSP) для ограничения источников выполнения скриптов.
+   Пример настройки CSP:
+   ```html
+   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self';">
+   ```
+3. Проверять и фильтровать все входные данные, используя белые списки допустимых значений.
+4. Использовать безопасные функции для манипуляции DOM, такие как 'textContent' вместо 'innerHTML'.
+-----------------------------------
+URL: http://127.0.0.1:5001/reflected
+Параметр: q
+Уязвимость: Да
+Тип уязвимости: XSS
+Payload: <svg/onload=alert('XSS')>
+Рекомендация: Для предотвращения XSS атак рекомендуется:
+1. Экранировать все входные данные перед их выводом на страницу.
+   Пример для Python:
+   ```python
+   from markupsafe import escape
+   safe_input = escape(user_input)
+   ```
+2. Использовать Content Security Policy (CSP) для ограничения источников выполнения скриптов.
+   Пример настройки CSP:
+   ```html
+   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self';">
+   ```
+3. Проверять и фильтровать все входные данные, используя белые списки допустимых значений.
+4. Использовать безопасные функции для манипуляции DOM, такие как 'textContent' вместо 'innerHTML'.
+-----------------------------------
+URL: http://127.0.0.1:5001/reflected
+Параметр: q
+Уязвимость: Да
+Тип уязвимости: XSS
+Payload: <img src=x onload=alert('XSS')>
+Рекомендация: Для предотвращения XSS атак рекомендуется:
+1. Экранировать все входные данные перед их выводом на страницу.
+   Пример для Python:
+   ```python
+   from markupsafe import escape
+   safe_input = escape(user_input)
+   ```
+2. Использовать Content Security Policy (CSP) для ограничения источников выполнения скриптов.
+   Пример настройки CSP:
+   ```html
+   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self';">
+   ```
+3. Проверять и фильтровать все входные данные, используя белые списки допустимых значений.
+4. Использовать безопасные функции для манипуляции DOM, такие как 'textContent' вместо 'innerHTML'.
+-----------------------------------
+URL: http://127.0.0.1:5001/reflected
+Параметр: q
+Уязвимость: Да
+Тип уязвимости: XSS
+Payload: <a src=x onload=alert('XSS')>Click me</a>
+Рекомендация: Для предотвращения XSS атак рекомендуется:
+1. Экранировать все входные данные перед их выводом на страницу.
+   Пример для Python:
+   ```python
+   from markupsafe import escape
+   safe_input = escape(user_input)
+   ```
+2. Использовать Content Security Policy (CSP) для ограничения источников выполнения скриптов.
+   Пример настройки CSP:
+   ```html
+   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self';">
+   ```
+3. Проверять и фильтровать все входные данные, используя белые списки допустимых значений.
+4. Использовать безопасные функции для манипуляции DOM, такие как 'textContent' вместо 'innerHTML'.
 -----------------------------------

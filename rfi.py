@@ -9,8 +9,7 @@ logger = logging.getLogger(__name__)
 async def test_rfi(session, base_url, param):
     rfi_payloads = [
         'https://raw.githubusercontent.com/your-username/your-repo/main/rfi_test.txt',
-        'https://raw.githubusercontent.com/m0xvi/web_vuln_scan/master/txt/rfi.txt',
-        'https://raw.githubusercontent.com/m0xvi/web_vuln_scan/master/txt/chuta',
+        'https://raw.githubusercontent.com/m0xvi/web_vuln_scan/master/test/lfi_rfi_test/rfi',
     ]
     for payload in rfi_payloads:
         # Формируем URL правильно, заменяя значение параметра

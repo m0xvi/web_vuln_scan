@@ -39,7 +39,7 @@ def index():
     <p>Or try including sensitive files like <a href="/include?page=passwd">/include?page=passwd</a></p>
 
     <h2>Remote File Inclusion (RFI)</h2>
-    <p>Try accessing <a href="/rfi?url=https://raw.githubusercontent.com/your-username/your-repo/main/rfi_test.txt">/rfi?url=https://raw.githubusercontent.com/your-username/your-repo/main/rfi_test.txt</a></p>
+    <p>Try accessing <a href="/rfi?url=https://raw.githubusercontent.com/m0xvi/web_vuln_scan/master/test/lfi_rfi_test/rfi">/rfi?url=https://raw.githubusercontent.com/m0xvi/web_vuln_scan/master/test/lfi_rfi_test/rfi</a></p>
     '''
 
 

