@@ -281,13 +281,19 @@ def timebased():
     result = None
     if request.method == 'POST':
         user_id = request.form['user_id']
-        query = f"SELECT CASE WHEN (SELECT COUNT(*) FROM users WHERE id = {user_id} AND 1=1) THEN 1 ELSE pg_sleep(5) END"
+        start_time = time.time()
+        if user_id == '1':
+            time.sleep(5)  # Simulate time delay
         conn = sqlite3.connect('test.db')
         cursor = conn.cursor()
-        start_time = time.time()
+        query = f"SELECT * FROM users WHERE id = {user_id}"
         try:
             cursor.execute(query)
-            result = "Query executed"
+            user = cursor.fetchone()
+            if user:
+                result = "User exists"
+            else:
+                result = "User does not exist"
         except sqlite3.Error as e:
             result = str(e)
         end_time = time.time()

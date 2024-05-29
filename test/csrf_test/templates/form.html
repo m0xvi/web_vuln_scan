@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Transfer</title>
+</head>
+<body>
+    <h1>Transfer Money</h1>
+    <form method="POST" action="/transfer">
+        {{ form.hidden_tag() }}
+        {{ form.amount.label }} {{ form.amount() }}<br>
+        {{ form.to_account.label }} {{ form.to_account() }}<br>
+        {{ form.submit() }}
+    </form>
+</body>
+</html>

