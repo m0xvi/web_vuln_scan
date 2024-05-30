@@ -57,7 +57,79 @@ async def analyze_lfi(scraped_data):
                             "2. Использовать белые списки допустимых значений для параметров, связанных с файлами.\n"
                             "3. Отключить функции включения файлов, если они не используются.\n"
                             "4. Регулярно обновлять и патчить ПО.\n"
-                        )
+                        ),
+                        'code_examples': {
+                            'python': (
+                                "python\n"
+                                "# Пример для Python с использованием белого списка разрешенных файлов\n\n"
+                                "from flask import Flask, request, abort\n\n"
+                                "app = Flask(__name__)\n\n"
+                                "# Список разрешенных файлов\n"
+                                "allowed_files = ['home.html', 'about.html', 'contact.html']\n\n"
+                                "@app.route('/include')\n"
+                                "def include_file():\n"
+                                "    file = request.args.get('file')\n"
+                                "    if file not in allowed_files:\n"
+                                "        abort(400)\n"
+                                "    return open(file).read()\n\n"
+                                "if __name__ == '__main__':\n"
+                                "    app.run()"
+                            ),
+                            'php': (
+                                "php\n"
+                                "<?php\n"
+                                "// Пример для PHP с использованием белого списка разрешенных файлов\n\n"
+                                "// Список разрешенных файлов\n"
+                                "$allowed_files = ['home.php', 'about.php', 'contact.php'];\n\n"
+                                "if (isset($_GET['file']) && in_array($_GET['file'], $allowed_files)) {\n"
+                                "  include $_GET['file'];\n"
+                                "} else {\n"
+                                "  echo 'Недопустимый файл';\n"
+                                "}\n"
+                                "?>"
+                            ),
+                            'java': (
+                                "java\n"
+                                "import java.io.IOException;\n"
+                                "import javax.servlet.ServletException;\n"
+                                "import javax.servlet.annotation.WebServlet;\n"
+                                "import javax.servlet.http.HttpServlet;\n"
+                                "import javax.servlet.http.HttpServletRequest;\n"
+                                "import javax.servlet.http.HttpServletResponse;\n"
+                                "import java.util.Arrays;\n"
+                                "import java.util.List;\n\n"
+                                "@WebServlet(\"/include\")\n"
+                                "public class IncludeServlet extends HttpServlet {\n"
+                                "    private static final List<String> allowedFiles = Arrays.asList(\"home.jsp\", \"about.jsp\", \"contact.jsp\");\n\n"
+                                "    protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {\n"
+                                "        String file = request.getParameter(\"file\");\n"
+                                "        if (file == null || !allowedFiles.contains(file)) {\n"
+                                "            response.sendError(HttpServletResponse.SC_BAD_REQUEST, \"Недопустимый файл\");\n"
+                                "            return;\n"
+                                "        }\n"
+                                "        request.getRequestDispatcher(file).include(request, response);\n"
+                                "    }\n"
+                                "}"
+                            ),
+                            'javascript': (
+                                "javascript\n"
+                                "// Пример для Node.js с использованием белого списка разрешенных файлов\n\n"
+                                "const express = require('express');\n"
+                                "const fs = require('fs');\n"
+                                "const path = require('path');\n\n"
+                                "const app = express();\n\n"
+                                "const allowedFiles = ['home.html', 'about.html', 'contact.html'];\n\n"
+                                "app.get('/include', (req, res) => {\n"
+                                "    const file = req.query.file;\n"
+                                "    if (!allowedFiles.includes(file)) {\n"
+                                "        return res.status(400).send('Недопустимый файл');\n"
+                                "    }\n"
+                                "    const filePath = path.join(__dirname, file);\n"
+                                "    res.sendFile(filePath);\n"
+                                "});\n\n"
+                                "app.listen(3000, () => console.log('Server is running on port 3000'));"
+                            )
+                        }
                     })
     return vulnerabilities
 

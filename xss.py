@@ -12,6 +12,7 @@ from aiohttp.client_exceptions import ClientError
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+
 # Static Analysis Functions
 def find_vulnerable_scripts(html):
     soup = BeautifulSoup(html, 'html.parser')
@@ -37,9 +38,50 @@ def find_vulnerable_scripts(html):
                         "Рекомендуется избегать использования 'document.write' и 'innerHTML'. "
                         "Вместо этого используйте безопасные методы манипуляции DOM, такие как 'textContent' или 'innerText'. "
                         "Также убедитесь, что все данные, используемые в этих функциях, проходят валидацию и экранирование."
-                    )
+                        "Для получения дополнительной информации, посетите [Cross Site Scripting (XSS)] https://owasp.org/www-community/attacks/xss/"
+                    ),
+                    'code_examples': {
+                        'python': (
+                            "python\n"
+                            "# Пример для Python с использованием экранирования входных данных\n\n"
+                            "from markupsafe import escape\n\n"
+                            "# Экранирование входных данных перед их выводом на страницу\n"
+                            "user_input = '<script>alert(\"XSS\")</script>'\n"
+                            "safe_input = escape(user_input)\n\n"
+                            "print(f'Безопасный вывод: {safe_input}')"
+                        ),
+                        'php': (
+                            "php\n"
+                            "<?php\n"
+                            "// Пример для PHP с использованием экранирования входных данных\n\n"
+                            "$user_input = '<script>alert(\"XSS\")</script>';\n"
+                            "$safe_input = htmlspecialchars($user_input, ENT_QUOTES, 'UTF-8');\n"
+                            "echo 'Безопасный вывод: ' . $safe_input;\n"
+                            "?>"
+                        ),
+                        'java': (
+                            "java\n"
+                            "import org.apache.commons.text.StringEscapeUtils;\n\n"
+                            "public class Example {\n"
+                            "    public static void main(String[] args) {\n"
+                            "        String userInput = \"<script>alert('XSS')</script>\";\n"
+                            "        String safeInput = StringEscapeUtils.escapeHtml4(userInput);\n"
+                            "        System.out.println(\"Безопасный вывод: \" + safeInput);\n"
+                            "    }\n"
+                            "}"
+                        ),
+                        'javascript': (
+                            "javascript\n"
+                            "// Пример для Node.js с использованием экранирования входных данных\n\n"
+                            "const escape = require('lodash.escape');\n\n"
+                            "const userInput = '<script>alert(\"XSS\")</script>';\n"
+                            "const safeInput = escape(userInput);\n\n"
+                            "console.log(`Безопасный вывод: ${safeInput}`);"
+                        )
+                    }
                 })
     return vulnerabilities
+
 
 # Dynamic Analysis Functions
 @retry(stop=stop_after_attempt(3), wait=wait_fixed(2))
@@ -55,6 +97,7 @@ async def send_request(session, url, method, data=None, headers=None, cookies=No
     except ClientError as e:
         logger.error(f"Request error: {e}")
         raise
+
 
 async def test_xss_injection(session, url, param, payload, method, headers=None, cookies=None):
     if method == 'GET':
@@ -81,19 +124,50 @@ async def test_xss_injection(session, url, param, payload, method, headers=None,
             'recommendation': (
                 "Для предотвращения XSS атак рекомендуется:\n"
                 "1. Экранировать все входные данные перед их выводом на страницу.\n"
-                "   Пример для Python:\n"
-                "   ```python\n"
-                "   from markupsafe import escape\n"
-                "   safe_input = escape(user_input)\n"
-                "   ```\n"
                 "2. Использовать Content Security Policy (CSP) для ограничения источников выполнения скриптов.\n"
-                "   Пример настройки CSP:\n"
-                "   ```html\n"
-                "   <meta http-equiv=\"Content-Security-Policy\" content=\"default-src 'self'; script-src 'self';\">\n"
-                "   ```\n"
                 "3. Проверять и фильтровать все входные данные, используя белые списки допустимых значений.\n"
                 "4. Использовать безопасные функции для манипуляции DOM, такие как 'textContent' вместо 'innerHTML'."
-            )
+                "Для получения дополнительной информации, посетите [Cross Site Scripting (XSS)] https://owasp.org/www-community/attacks/xss/"
+            ),
+            'code_examples': {
+                'python': (
+                    "python\n"
+                    "# Пример для Python с использованием экранирования входных данных\n\n"
+                    "from markupsafe import escape\n\n"
+                    "# Экранирование входных данных перед их выводом на страницу\n"
+                    "user_input = '<script>alert(\"XSS\")</script>'\n"
+                    "safe_input = escape(user_input)\n\n"
+                    "print(f'Безопасный вывод: {safe_input}')"
+                ),
+                'php': (
+                    "php\n"
+                    "<?php\n"
+                    "// Пример для PHP с использованием экранирования входных данных\n\n"
+                    "$user_input = '<script>alert(\"XSS\")</script>';\n"
+                    "$safe_input = htmlspecialchars($user_input, ENT_QUOTES, 'UTF-8');\n"
+                    "echo 'Безопасный вывод: ' . $safe_input;\n"
+                    "?>"
+                ),
+                'java': (
+                    "java\n"
+                    "import org.apache.commons.text.StringEscapeUtils;\n\n"
+                    "public class Example {\n"
+                    "    public static void main(String[] args) {\n"
+                    "        String userInput = \"<script>alert('XSS')</script>\";\n"
+                    "        String safeInput = StringEscapeUtils.escapeHtml4(userInput);\n"
+                    "        System.out.println(\"Безопасный вывод: \" + safeInput);\n"
+                    "    }\n"
+                    "}"
+                ),
+                'javascript': (
+                    "javascript\n"
+                    "// Пример для Node.js с использованием экранирования входных данных\n\n"
+                    "const escape = require('lodash.escape');\n\n"
+                    "const userInput = '<script>alert(\"XSS\")</script>';\n"
+                    "const safeInput = escape(userInput);\n\n"
+                    "console.log(`Безопасный вывод: ${safeInput}`);"
+                )
+            }
         }
     return {
         'url': url,
@@ -108,6 +182,7 @@ async def test_xss_injection(session, url, param, payload, method, headers=None,
         'recommendation': "Убедитесь, что все входные данные всегда проходят валидацию и экранирование."
     }
 
+
 def generate_heuristic_payloads():
     base_payloads = ["<script>alert('XSS')</script>", "<img src=x onerror=alert('XSS')>", "<svg/onload=alert('XSS')>"]
     attributes = ["src", "href", "onload", "onerror", "onclick"]
@@ -118,6 +193,7 @@ def generate_heuristic_payloads():
         heuristic_payloads.append(f"<img {attribute}=x {event}=alert('XSS')>")
         heuristic_payloads.append(f"<a {attribute}=x {event}=alert('XSS')>Click me</a>")
     return heuristic_payloads
+
 
 async def analyze_xss(scraped_data):
     vulnerabilities = []
@@ -176,7 +252,8 @@ async def analyze_xss(scraped_data):
                             test_xss_injection(session, url, param, payload, 'GET')
                         )
 
-            headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3"}
+            headers = {
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3"}
             for header in ['User-Agent', 'Referer']:
                 for payload_type, payload_list in xss_payloads.items():
                     for payload in payload_list:
@@ -194,6 +271,7 @@ async def analyze_xss(scraped_data):
     logger.info(f"XSS vulnerabilities found: {json.dumps(vulnerabilities, indent=4)}")
     return vulnerabilities
 
+
 def load_scraped_data(file_path):
     try:
         with open(file_path, 'r') as file:
@@ -203,6 +281,7 @@ def load_scraped_data(file_path):
     except Exception as e:
         logger.error(f"Error loading scraped data from {file_path}: {e}")
         return []
+
 
 if __name__ == '__main__':
     scraped_data = load_scraped_data('scraped_data.json')

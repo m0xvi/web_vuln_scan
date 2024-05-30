@@ -6,6 +6,7 @@ import json
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+
 async def test_idor(session, url, param, value):
     if isinstance(value, list):
         value = value[0]
@@ -29,6 +30,7 @@ async def test_idor(session, url, param, value):
     except Exception as e:
         logger.error(f"Error testing IDOR payload on {url}: {e}")
     return False, None
+
 
 async def analyze_idor(scraped_data):
     vulnerabilities = []
@@ -57,9 +59,82 @@ async def analyze_idor(scraped_data):
                             "2. Не полагаться только на скрытие параметров в URL для обеспечения безопасности.\n"
                             "3. Использовать сложные идентификаторы объектов, которые трудно предугадать.\n"
                             "4. Регулярно проверять и обновлять код для предотвращения уязвимостей."
-                        )
+                        ),
+                        'code_examples': {
+                            'python': (
+                                "python\n"
+                                "# Пример для Python с использованием проверки прав доступа\n\n"
+                                "# Предполагаемая функция проверки прав доступа\n"
+                                "def check_access(user_id, resource_id):\n"
+                                "    # Логика проверки прав доступа\n"
+                                "    return user_id == resource_id\n\n"
+                                "# Пример использования проверки прав доступа\n"
+                                "current_user_id = 1\n"
+                                "requested_resource_id = 2\n\n"
+                                "if check_access(current_user_id, requested_resource_id):\n"
+                                "    print('Доступ разрешен')\n"
+                                "else:\n"
+                                "    print('Доступ запрещен')"
+                            ),
+                            'php': (
+                                "php\n"
+                                "<?php\n"
+                                "// Пример для PHP с использованием проверки прав доступа\n\n"
+                                "// Предполагаемая функция проверки прав доступа\n"
+                                "function check_access($user_id, $resource_id) {\n"
+                                "    // Логика проверки прав доступа\n"
+                                "    return $user_id == $resource_id;\n"
+                                "}\n\n"
+                                "// Пример использования проверки прав доступа\n"
+                                "$current_user_id = 1;\n"
+                                "$requested_resource_id = 2;\n\n"
+                                "if (check_access($current_user_id, $requested_resource_id)) {\n"
+                                "    echo 'Доступ разрешен';\n"
+                                "} else {\n"
+                                "    echo 'Доступ запрещен';\n"
+                                "}\n"
+                                "?>"
+                            ),
+                            'java': (
+                                "java\n"
+                                "public class AccessControl {\n"
+                                "    // Предполагаемая функция проверки прав доступа\n"
+                                "    public boolean checkAccess(int userId, int resourceId) {\n"
+                                "        // Логика проверки прав доступа\n"
+                                "        return userId == resourceId;\n"
+                                "    }\n\n"
+                                "    public static void main(String[] args) {\n"
+                                "        AccessControl ac = new AccessControl();\n"
+                                "        int currentUserId = 1;\n"
+                                "        int requestedResourceId = 2;\n\n"
+                                "        if (ac.checkAccess(currentUserId, requestedResourceId)) {\n"
+                                "            System.out.println(\"Доступ разрешен\");\n"
+                                "        } else {\n"
+                                "            System.out.println(\"Доступ запрещен\");\n"
+                                "        }\n"
+                                "    }\n"
+                                "}"
+                            ),
+                            'javascript': (
+                                "javascript\n"
+                                "// Пример для Node.js с использованием проверки прав доступа\n\n"
+                                "function checkAccess(userId, resourceId) {\n"
+                                "    // Логика проверки прав доступа\n"
+                                "    return userId === resourceId;\n"
+                                "}\n\n"
+                                "// Пример использования проверки прав доступа\n"
+                                "const currentUserId = 1;\n"
+                                "const requestedResourceId = 2;\n\n"
+                                "if (checkAccess(currentUserId, requestedResourceId)) {\n"
+                                "    console.log('Доступ разрешен');\n"
+                                "} else {\n"
+                                "    console.log('Доступ запрещен');\n"
+                                "}"
+                            )
+                        }
                     })
     return vulnerabilities
+
 
 def load_scraped_data(file_path):
     try:
@@ -70,6 +145,7 @@ def load_scraped_data(file_path):
     except Exception as e:
         logger.error(f"Error loading scraped data from {file_path}: {e}")
         return []
+
 
 if __name__ == '__main__':
     scraped_data = load_scraped_data('scraped_data.json')

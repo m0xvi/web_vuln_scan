@@ -9,8 +9,7 @@ logger = logging.getLogger(__name__)
 async def test_rfi(session, base_url, param):
     rfi_payloads = [
         'https://raw.githubusercontent.com/your-username/your-repo/main/rfi_test.txt',
-        'https://raw.githubusercontent.com/m0xvi/web_vuln_scan/master/txt/rfi.txt',
-        'https://raw.githubusercontent.com/m0xvi/web_vuln_scan/master/txt/chuta',
+        'https://raw.githubusercontent.com/m0xvi/web_vuln_scan/master/test/lfi_rfi_test/rfi',
     ]
     for payload in rfi_payloads:
         # Формируем URL правильно, заменяя значение параметра
@@ -55,7 +54,94 @@ async def analyze_rfi(scraped_data):
                             "2. Использовать белые списки допустимых значений для параметров, связанных с файлами.\n"
                             "3. Отключить функции включения файлов из удаленных источников, если они не используются.\n"
                             "4. Регулярно обновлять и патчить ПО.\n"
-                        )
+                        ),
+                        'code_examples': {
+                            'python': (
+                                "python\n"
+                                "# Пример для Python с использованием белого списка разрешенных URL\n\n"
+                                "from flask import Flask, request, abort\n\n"
+                                "app = Flask(__name__)\n\n"
+                                "# Список разрешенных URL\n"
+                                "allowed_urls = ['https://example.com/test.html']\n\n"
+                                "@app.route('/include')\n"
+                                "def include_url():\n"
+                                "    url = request.args.get('url')\n"
+                                "    if url not in allowed_urls:\n"
+                                "        abort(400)\n"
+                                "    response = requests.get(url)\n"
+                                "    return response.text\n\n"
+                                "if __name__ == '__main__':\n"
+                                "    app.run()"
+                            ),
+                            'php': (
+                                "php\n"
+                                "<?php\n"
+                                "// Пример для PHP с использованием белого списка разрешенных URL\n\n"
+                                "// Список разрешенных URL\n"
+                                "$allowed_urls = ['https://example.com/test.php'];\n\n"
+                                "if (isset($_GET['url']) && in_array($_GET['url'], $allowed_urls)) {\n"
+                                "  include $_GET['url'];\n"
+                                "} else {\n"
+                                "  echo 'Недопустимый URL';\n"
+                                "}\n"
+                                "?>"
+                            ),
+                            'java': (
+                                "java\n"
+                                "import java.io.IOException;\n"
+                                "import java.net.HttpURLConnection;\n"
+                                "import java.net.URL;\n"
+                                "import java.util.Arrays;\n"
+                                "import java.util.List;\n"
+                                "import javax.servlet.ServletException;\n"
+                                "import javax.servlet.annotation.WebServlet;\n"
+                                "import javax.servlet.http.HttpServlet;\n"
+                                "import javax.servlet.http.HttpServletRequest;\n"
+                                "import javax.servlet.http.HttpServletResponse;\n\n"
+                                "@WebServlet(\"/include\")\n"
+                                "public class IncludeServlet extends HttpServlet {\n"
+                                "    private static final List<String> allowedUrls = Arrays.asList(\"https://example.com/test.jsp\");\n\n"
+                                "    protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {\n"
+                                "        String urlString = request.getParameter(\"url\");\n"
+                                "        if (urlString == null || !allowedUrls.contains(urlString)) {\n"
+                                "            response.sendError(HttpServletResponse.SC_BAD_REQUEST, \"Недопустимый URL\");\n"
+                                "            return;\n"
+                                "        }\n"
+                                "        URL url = new URL(urlString);\n"
+                                "        HttpURLConnection conn = (HttpURLConnection) url.openConnection();\n"
+                                "        conn.setRequestMethod(\"GET\");\n"
+                                "        conn.connect();\n"
+                                "        InputStream in = conn.getInputStream();\n"
+                                "        byte[] buffer = new byte[1024];\n"
+                                "        int bytesRead;\n"
+                                "        while ((bytesRead = in.read(buffer)) != -1) {\n"
+                                "            response.getOutputStream().write(buffer, 0, bytesRead);\n"
+                                "        }\n"
+                                "    }\n"
+                                "}"
+                            ),
+                            'javascript': (
+                                "javascript\n"
+                                "// Пример для Node.js с использованием белого списка разрешенных URL\n\n"
+                                "const express = require('express');\n"
+                                "const axios = require('axios');\n\n"
+                                "const app = express();\n\n"
+                                "const allowedUrls = ['https://example.com/test.html'];\n\n"
+                                "app.get('/include', async (req, res) => {\n"
+                                "    const url = req.query.url;\n"
+                                "    if (!allowedUrls.includes(url)) {\n"
+                                "        return res.status(400).send('Недопустимый URL');\n"
+                                "    }\n"
+                                "    try {\n"
+                                "        const response = await axios.get(url);\n"
+                                "        res.send(response.data);\n"
+                                "    } catch (error) {\n"
+                                "        res.status(500).send('Ошибка при получении данных');\n"
+                                "    }\n"
+                                "});\n\n"
+                                "app.listen(3000, () => console.log('Server is running on port 3000'));"
+                            )
+                        }
                     })
     return vulnerabilities
 

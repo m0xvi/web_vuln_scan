@@ -153,8 +153,17 @@ def callback_query(call):
         elif req['method'] == 'recommend':
             page = req['page']
             logger.info(f"Handling recommendations for page: {page}")
-            recommendation = vulnerabilities[page - 1].get('recommendation', 'Рекомендации не найдены.')
-            bot.send_message(call.message.chat.id, recommendation)
+            vulnerability = vulnerabilities[page - 1]
+            recommendation = vulnerability.get('recommendation', 'Рекомендации не найдены.')
+            code_example = vulnerability['code_examples'].get('python', 'Пример кода не найден.')
+            recommendation_message = bot.send_message(call.message.chat.id, recommendation)
+            send_code_example(call.message.chat.id, recommendation_message.message_id, code_example, vulnerability, 'python', page)
+        elif req['method'] == 'change_code_example':
+            page = req['page']
+            language = req['lang']  # Используем ключ 'lang'
+            vulnerability = vulnerabilities[page - 1]
+            code_example = vulnerability['code_examples'].get(language, 'Пример кода не найден.')
+            update_code_example(call.message.chat.id, call.message.message_id, code_example, vulnerability, language, page)
         elif req['method'] == 'report':
             send_report(call)
         elif req['method'] == 'help':
@@ -165,6 +174,34 @@ def callback_query(call):
     except Exception as e:
         logger.error(f"Error in callback_query: {e}")
         bot.send_message(call.message.chat.id, f"Произошла ошибка: {e}")
+
+
+
+def send_code_example(chat_id, message_id, code_example, vulnerability, language, page):
+    markup = InlineKeyboardMarkup()
+    buttons = [
+        InlineKeyboardButton(text='Python', callback_data=json.dumps({"method": "change_code_example", "lang": "python", "page": page})),
+        InlineKeyboardButton(text='PHP', callback_data=json.dumps({"method": "change_code_example", "lang": "php", "page": page})),
+        InlineKeyboardButton(text='Java', callback_data=json.dumps({"method": "change_code_example", "lang": "java", "page": page}))
+    ]
+    markup.add(*buttons)
+    bot.send_message(chat_id, f"```{code_example}```", parse_mode='Markdown', reply_markup=markup)
+
+def update_code_example(chat_id, message_id, code_example, vulnerability, language, page):
+    markup = InlineKeyboardMarkup()
+    buttons = [
+        InlineKeyboardButton(text='Python', callback_data=json.dumps({"method": "change_code_example", "lang": "python", "page": page})),
+        InlineKeyboardButton(text='PHP', callback_data=json.dumps({"method": "change_code_example", "lang": "php", "page": page})),
+        InlineKeyboardButton(text='Java', callback_data=json.dumps({"method": "change_code_example", "lang": "java", "page": page}))
+    ]
+    markup.add(*buttons)
+    try:
+        bot.edit_message_text(f"```{code_example}```", chat_id, message_id, parse_mode='Markdown', reply_markup=markup)
+    except Exception as e:
+        logger.error(f"Error updating code example: {e}")
+        bot.send_message(chat_id, f"Произошла ошибка при обновлении примера кода: {e}")
+
+
 
 
 @bot.message_handler(commands=['start', 'help'])
@@ -389,6 +426,7 @@ def run_async_in_process(queue, url, chat_id, analyze_func):
 
 async def spider_and_analyze(url, chat_id, analyze_func):
     try:
+        start_time = datetime.now()  # Время начала сканирования
         await send_message_with_retry(chat_id, "Сканирование началось, пожалуйста, подождите...")
 
         logger.info(f"Starting spider for URL: {url}")
@@ -409,7 +447,8 @@ async def spider_and_analyze(url, chat_id, analyze_func):
         results.extend(formatted_results)
         save_results_to_file(results)
         logger.info(f"Total results: {len(results)}")
-        generate_detailed_report(scraped_data, vulnerabilities)
+        end_time = datetime.now()  # Время окончания сканирования
+        report_path = generate_detailed_report(scraped_data, vulnerabilities, start_time, end_time)
 
         return vulnerabilities
     except Exception as e:
@@ -450,9 +489,36 @@ def send_help(call):
     send_welcome(call)
 
 
-def generate_detailed_report(scraped_data, vulnerabilities):
+def generate_detailed_report(scraped_data, vulnerabilities, start_time, end_time):
     report = "Детальный отчет сканирования:\n\n"
-    report += "=== Данные скрапера ===\n"
+    report += "=== Основные данные ===\n"
+    report += f"URL сканируемого веб-приложения: {scraped_data[0]['URL']}\n"
+    report += f"Дата и время начала сканирования: {start_time.strftime('%Y-%m-%d %H:%M:%S')}\n"
+    report += f"Время, затраченное на сканирование: {str(end_time - start_time)}\n"
+    report += f"Метод сканирования: Полный скан\n\n"
+
+    report += "=== Общая информация об уязвимостях ===\n"
+    report += f"Общее количество найденных уязвимостей: {len(vulnerabilities)}\n"
+    for idx, result in enumerate(vulnerabilities, 1):
+        report += f"{idx}. Тип: {result['type']}, Риск-уровень: {result['risk_level']}\n"
+        report += f"Описание: {result['description']}\n\n"
+
+    report += "=== Детали каждой уязвимости ===\n"
+    for idx, result in enumerate(vulnerabilities, 1):
+        report += f"Уязвимость {idx}:\n"
+        report += f"URL: {result.get('url', 'Неизвестно')}\n"
+        report += f"Параметр: {result.get('parameter', 'Неизвестно')}\n"
+        report += f"Тип уязвимости: {result['type']}\n"
+        report += f"Риск-уровень: {result['risk_level']}\n"
+        report += f"Описание уязвимости: {result['description']}\n"
+        report += f"Рекомендации:\n{result.get('recommendation', 'Рекомендации не найдены.')}\n"
+        if 'code_examples' in result:
+            report += "Примеры кода:\n"
+            for lang, code in result['code_examples'].items():
+                report += f"{lang.capitalize()}:\n{code}\n"
+        report += "-----------------------------------\n"
+
+    report += "\n=== Данные о сканируемых страницах ===\n"
     for page in scraped_data:
         report += f"URL: {page['URL']}\n"
         report += f"Метод: {page['Method']}\n"
@@ -469,25 +535,19 @@ def generate_detailed_report(scraped_data, vulnerabilities):
                 report += f"    - {input_tag}\n"
         report += "-----------------------------------\n"
 
-    report += "\n=== Найденные уязвимости ===\n"
-    for result in vulnerabilities:
-        report += f"URL: {result['url']}\n"
-        if 'parameter' in result:
-            report += f"Параметр: {result['parameter']}\n"
-        report += f"Уязвимость: {'Да' if result['is_vulnerable'] else 'Нет'}\n"
-        report += f"Тип уязвимости: {result['type']}\n"
-        if 'payload' in result:
-            report += f"Payload: {result['payload']}\n"
-        if 'response_time' in result:
-            report += f"Время отклика: {result['response_time']}\n"
-        report += f"Рекомендация: {result.get('recommendation', 'Рекомендации не найдены.')}\n"
-        report += "-----------------------------------\n"
+    report += "\n=== Статистика сканирования ===\n"
+    report += f"Время, затраченное на сканирование: {str(end_time - start_time)}\n"
+    report += f"Количество сканированных страниц: {len(scraped_data)}\n"
+    report += f"Количество проверенных форм: {sum(len(page.get('Forms', [])) for page in scraped_data)}\n"
+    report += f"Количество проверенных параметров: {sum(len(page.get('Parameters', {})) for page in scraped_data)}\n"
 
     report_path = "report.txt"
     with open(report_path, 'w', encoding='utf-8') as file:
         file.write(report)
     logger.info(f"Detailed report generated at {report_path}")
     return report_path
+
+
 
 
 if __name__ == "__main__":

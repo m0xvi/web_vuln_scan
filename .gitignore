@@ -1,0 +1,8 @@
+scraped_data.json
+report.txt
+results.json
+py TO txt.py
+csrf_vulnerabilities.json
+/txt/
+/__pycache__/
+/.idea/
